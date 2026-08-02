@@ -122,7 +122,7 @@ you scroll the sidebar or the result grid.
 Mouse reporting is on whenever swsql is running, so selecting text to copy it
 works the way it does in any terminal program that tracks the mouse: hold `⌥` or
 `⇧` while dragging. This is why swsql links a small
-[fork of SwiftTUI](https://github.com/vdsingh/SwiftTUI/tree/mouse-support) -
+[fork of SwiftTUI](https://github.com/vdsingh/SwiftTUI) -
 the upstream library is keyboard-only, and the fork adds the SGR mouse handling.
 
 ## Limits and shape
