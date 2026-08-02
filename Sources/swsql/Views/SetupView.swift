@@ -1,11 +1,12 @@
 import SWSQLCore
 import SwiftTUI
 
-/// The first-run screen: paste a connection URL, which swsql then remembers so
-/// the next launch needs neither an argument nor any PG* environment.
+/// The add-a-connection screen: a name, a URL, and whether it is production.
 ///
-/// Shown whenever there is no connection target yet - on first run with nothing
-/// saved, or after choosing "Edit URL" from a failed connection.
+/// Shown full-screen whenever there is no connection target yet - on first run
+/// with nothing saved, or when adding another connection from the list. swsql
+/// remembers what is entered here once it connects, so later launches need no
+/// argument and no PG* environment.
 struct SetupView: View {
     @ObservedObject var model: AppModel
     let layout: ScreenLayout
@@ -19,14 +20,12 @@ struct SetupView: View {
     ]
 
     var body: some View {
-        // SwiftTUI's ViewBuilder tops out at ten children per stack, so the body
-        // of the screen is grouped into one nested stack of its own.
         VStack(alignment: .leading, spacing: 0) {
             TitleBarView(model: model, width: layout.width)
             content
             Filler(height: fillerHeight, width: layout.width)
             StatusBarView(model: model, width: layout.width)
-            Text(DisplayText.pad("  ⏎ connect     ⏎ on an empty line uses PG* environment defaults     ^C quit", to: layout.width, alignment: .left))
+            Text(DisplayText.pad("  ⏎ in the url field connects   ·   empty url uses PG* environment defaults   ·   ^C quit", to: layout.width, alignment: .left))
                 .foregroundColor(Theme.dim)
         }
     }
@@ -34,29 +33,58 @@ struct SetupView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             blank
-            Text("  Connect to PostgreSQL").foregroundColor(Theme.accent).bold()
-            blank
-            HStack(spacing: 0) {
-                Text("  url> ").foregroundColor(Theme.accent).bold()
-                TextField(placeholder: "paste a connection URL and press ⏎") { input in
-                    if input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        model.useEnvironmentDefaults()
-                    } else {
-                        model.configure(input)
-                    }
-                }
-                .frame(width: Extended(max(1, layout.width - 7)))
+            Text("  Add a connection").foregroundColor(Theme.accent).bold()
+            field(label: "name> ", placeholder: "an optional label, e.g. prod or staging") { input in
+                model.setDraftName(input)
             }
+            field(label: " url> ", placeholder: "paste a connection URL and press ⏎") { input in
+                if input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    model.useEnvironmentDefaults()
+                } else {
+                    model.addConnection(url: input)
+                }
+            }
+            HStack(spacing: 2) {
+                Text("      ")
+                Button(productionLabel, action: { model.toggleDraftProduction() })
+                    .foregroundColor(model.draftIsProduction ? Theme.warning : Theme.dim)
+                cancelButton
+            }
+            Text("  " + DisplayText.truncate(draftSummary, to: max(1, layout.width - 2)))
+                .foregroundColor(model.draftIsProduction ? Theme.warning : Theme.dim)
             blank
             Text("  Examples").foregroundColor(Theme.dim)
             ForEach(SetupView.examples.indexed) { example in
                 Text("    " + DisplayText.truncate(example.value, to: max(1, layout.width - 4)))
                     .foregroundColor(Theme.dim)
             }
-            blank
-            Text(DisplayText.truncate("  Saved to ~/.config/swsql/connection, readable only by you, once it connects.", to: max(1, layout.width)))
-                .foregroundColor(Theme.dim)
         }
+    }
+
+    @ViewBuilder
+    private var cancelButton: some View {
+        // Only offer to cancel when there is already a connection to go back to.
+        if !model.connections.isEmpty {
+            Button("Cancel", action: { model.cancelAdd() }).foregroundColor(Theme.dim)
+        }
+    }
+
+    private func field(label: String, placeholder: String, onSubmit: @escaping (String) -> Void) -> some View {
+        HStack(spacing: 0) {
+            Text("  \(label)").foregroundColor(Theme.accent).bold()
+            TextField(placeholder: placeholder, action: onSubmit)
+                .frame(width: Extended(max(1, layout.width - label.count - 2)))
+        }
+    }
+
+    private var productionLabel: String {
+        model.draftIsProduction ? "[x] production" : "[ ] production"
+    }
+
+    private var draftSummary: String {
+        let name = model.draftName.isEmpty ? "(named from the database)" : "\"\(model.draftName)\""
+        let prod = model.draftIsProduction ? "   ⚠ will be marked PRODUCTION" : ""
+        return "saving as \(name)\(prod)"
     }
 
     /// A full-width blank line, so the screen paints solidly rather than leaving
@@ -65,15 +93,14 @@ struct SetupView: View {
         Text(String(repeating: " ", count: max(1, layout.width)))
     }
 
-    /// Lines the `content` stack paints: four blanks, the heading, the `url>`
-    /// field, the "Examples" label, the example lines and the save-location note.
+    /// Lines the `content` stack paints, so the filler can hold the screen height
+    /// steady: two blanks, the heading, the name and url fields, the toggle row,
+    /// the summary, the "Examples" label and the example lines.
     private var contentLineCount: Int {
-        4 + 1 + 1 + 1 + SetupView.examples.count + 1
+        2 + 1 + 2 + 1 + 1 + 1 + SetupView.examples.count
     }
 
-    /// Holds the screen height steady by filling everything between the note and
-    /// the status line, so the whole layout is exactly `layout.height` tall:
-    /// title(1) + content + filler + status(1) + hint(1).
+    /// title(1) + content + filler + status(1) + hint(1) == layout.height.
     private var fillerHeight: Int {
         max(0, layout.height - 1 - contentLineCount - 2)
     }

@@ -8,8 +8,10 @@ struct TitleBarView: View {
     let width: Int
 
     var body: some View {
+        // Connected to a production-tagged database, the whole bar turns into a
+        // warning banner so the environment can never be mistaken.
         Text(line)
-            .background(Theme.headerBackground)
+            .background(model.isConnectedToProduction ? Theme.failure : Theme.headerBackground)
             .foregroundColor(Theme.headerForeground)
             .bold()
     }
@@ -19,10 +21,17 @@ struct TitleBarView: View {
         // The connection state is the part worth keeping when space runs out, so
         // the description on the left is what gets truncated.
         let leftBudget = max(1, width - right.count - 1)
-        let left = DisplayText.truncate(" swsql  \(target)", to: leftBudget)
+        let left = DisplayText.truncate(" swsql  \(label)\(target)", to: leftBudget)
 
         let gap = max(1, width - left.count - right.count)
         return DisplayText.truncate(left + String(repeating: " ", count: gap) + right, to: width)
+    }
+
+    /// The active connection's name, when it has one, so multiple databases are
+    /// told apart at a glance.
+    private var label: String {
+        guard let name = model.activeConnection?.name else { return "" }
+        return "[\(name)]  "
     }
 
     private var target: String {
@@ -39,6 +48,7 @@ struct TitleBarView: View {
     }
 
     private var indicator: String {
+        if model.isConnectedToProduction, !model.isRunning { return "⚠ PRODUCTION  ● ready" }
         if model.isRunning { return "◐ running" }
         switch model.connectionState {
         case .unconfigured: return "○ setup"
@@ -87,6 +97,8 @@ struct KeyHintsView: View {
             return "↑↓←→ move   [Rows] returns to the grid   ^C quit"
         case .history:
             return "↑↓ pick   ⏎ run again   ^C quit"
+        case .connections:
+            return "↑↓ pick   ⏎ switch   [＋ Add] adds one   ^C quit"
         case .structure:
             return "↑↓←→ move   [Rows] returns to the grid   ^C quit"
         case .data:

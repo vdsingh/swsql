@@ -18,16 +18,7 @@ public struct ConnectionStore {
     /// The default location: `$XDG_CONFIG_HOME/swsql/connection`, falling back to
     /// `~/.config/swsql/connection`.
     public init(environment: [String: String] = ProcessInfo.processInfo.environment) {
-        let base: URL
-        if let xdg = environment["XDG_CONFIG_HOME"], !xdg.isEmpty {
-            base = URL(fileURLWithPath: xdg, isDirectory: true)
-        } else {
-            let home = environment["HOME"].map { URL(fileURLWithPath: $0, isDirectory: true) }
-                ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
-            base = home.appendingPathComponent(".config", isDirectory: true)
-        }
-        self.fileURL = base
-            .appendingPathComponent("swsql", isDirectory: true)
+        self.fileURL = ConfigDirectory.url(environment: environment)
             .appendingPathComponent("connection", isDirectory: false)
     }
 

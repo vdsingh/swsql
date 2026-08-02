@@ -82,17 +82,36 @@ to pick out in `pg_stat_activity`.
 ### The setup screen
 
 Run `swsql` with no arguments and nothing saved yet, and it opens on a setup
-screen that asks for a connection URL. Paste one - a `postgres://` URI, a libpq
-keyword string, or a bare database name - and press `⏎`. Once it connects, the
-string is written to `~/.config/swsql/connection` (honouring `XDG_CONFIG_HOME`),
-so every later `swsql` with no arguments reconnects to it without a URL or any
-`PG*` environment. Only a string that actually connected is saved.
+screen that asks for a connection. Give it an optional **name** (`prod`,
+`staging`), a **URL** - a `postgres://` URI, a libpq keyword string, or a bare
+database name - and, if it is production, flip the **production** toggle. Press
+`⏎` in the URL field to connect. Only a connection that actually connected is
+saved. Pressing `⏎` on an empty URL falls back to libpq's environment defaults
+without saving anything.
 
-The file can hold a password, so it is written `0600`, the same posture `psql`
-requires of `~/.pgpass`. Pressing `⏎` on the empty field falls back to libpq's
-environment defaults instead. To change the saved connection later, choose
-`Edit URL` from a failed connection, which returns to this screen. A connection
-named on the command line is used as-is and is never saved.
+### Multiple connections
+
+swsql remembers every connection you add, so you can keep `staging` and `prod`
+side by side and switch between them:
+
+- The `Conn` button opens the connection list. Pick one to connect to it, or
+  choose `＋ Add a connection` to add another.
+- `swsql` with no arguments reconnects to the one you used last; `swsql <name>`
+  opens a saved connection by name.
+- The list is stored as JSON at `~/.config/swsql/connections.json` (honouring
+  `XDG_CONFIG_HOME`). An entry can embed a password, so the file is written
+  `0600`, the same posture `psql` requires of `~/.pgpass`. An older single
+  `connection` file is migrated automatically on first run.
+- A connection named on the command line as a URL (rather than a saved name) is
+  used as-is and is never saved.
+
+### Production connections
+
+A connection tagged as production is impossible to mistake for anything else:
+whenever you are connected to it, the title bar turns red and reads
+`⚠ PRODUCTION`, and it is flagged in the connection list. (The tag is passive -
+it warns, it does not block; a confirmation step before connecting or writing is
+a natural next addition.)
 
 ## Keys
 
@@ -108,8 +127,8 @@ from the keyboard or with the mouse.
 
 The buttons under the results do the rest: `⇟` `⇞` page through a large result,
 `◀` `▶` scroll one column at a time, `Struct` shows the selected table's
-columns, `Hist` lists earlier statements, `?` opens help, and `Rows` returns to
-the grid from any other pane.
+columns, `Hist` lists earlier statements, `Conn` switches between saved
+connections, `?` opens help, and `Rows` returns to the grid from any other pane.
 
 The object filter and the SQL prompt are text fields: type, then press `⏎`.
 

@@ -33,57 +33,66 @@ func fail(_ message: String) -> Never {
     exit(2)
 }
 
-let invocation: ConnectionTarget.Invocation
-do {
-    invocation = try ConnectionTarget.parse(arguments: Array(CommandLine.arguments.dropFirst()))
-} catch let error as ConnectionTarget.ParseError {
-    fail("\(error.description)\n\nRun swsql --help for usage.")
-} catch {
-    fail("\(error)")
-}
-
-/// Reads a saved connection string back into a target, or nil if the file is
-/// absent or no longer parses.
-func savedTarget(_ input: String) -> ConnectionTarget? {
-    guard let invocation = try? ConnectionTarget.parse(arguments: [input]) else { return nil }
-    switch invocation {
-    case .connect(let target), .connectUsingDefaults(let target): return target
-    case .help, .version: return nil
-    }
-}
-
-/// Builds the model, connects if there is somewhere to connect, and runs the UI.
-func launch(target: ConnectionTarget?, environmentDefaults: ConnectionTarget, store: ConnectionStore) {
+/// Builds the model with its starting point and runs the UI.
+func launch(initial: AppModel.Initial, connections: [SavedConnection], environmentDefaults: ConnectionTarget) {
     let model = AppModel(
         database: DatabaseService(),
-        store: store,
-        target: target,
+        store: ConnectionsStore(),
+        connections: connections,
+        initial: initial,
         environmentDefaults: environmentDefaults
     )
 
     // Connecting is dispatched now, but its completion cannot land until the main
-    // queue starts running, which happens inside Application.start(). With no
-    // target the app opens on its setup screen and asks for a URL instead.
-    if target != nil { model.start() }
+    // queue starts running inside Application.start(). With `.setup` there is no
+    // target and start() is a no-op, so the app opens on the setup screen.
+    model.start()
 
     Application(rootView: RootView(model: model)).start()
 }
 
-let store = ConnectionStore()
+func runApp() {
+    let savedConnections = ConnectionsStore().load()
+    // Only used by the "empty URL → environment defaults" escape hatch on the
+    // setup screen; libpq resolves the rest from PG* and its own defaults.
+    let environmentDefaults = ConnectionTarget(connectionString: "application_name=swsql")
+    let rawArguments = Array(CommandLine.arguments.dropFirst())
 
-switch invocation {
-case .help:
-    print(usage)
-    exit(0)
-case .version:
-    print("swsql \(version)")
-    exit(0)
-case .connect(let target):
-    // A connection was named on the command line: use it as-is, ephemerally.
-    launch(target: target, environmentDefaults: target, store: store)
-case .connectUsingDefaults(let environmentDefaults):
-    // Nothing was named. Reuse the URL saved from a previous run if there is one;
-    // otherwise open on the setup screen and ask for one.
-    let target = store.load().flatMap(savedTarget)
-    launch(target: target, environmentDefaults: environmentDefaults, store: store)
+    // `swsql <name>` selects a saved connection by name.
+    if rawArguments.count == 1, !rawArguments[0].hasPrefix("-"),
+       let match = ConnectionList.first(named: rawArguments[0], in: savedConnections) {
+        launch(initial: .saved(match), connections: savedConnections, environmentDefaults: environmentDefaults)
+        return
+    }
+
+    let invocation: ConnectionTarget.Invocation
+    do {
+        invocation = try ConnectionTarget.parse(arguments: rawArguments)
+    } catch let error as ConnectionTarget.ParseError {
+        fail("\(error.description)\n\nRun swsql --help for usage.")
+    } catch {
+        fail("\(error)")
+    }
+
+    switch invocation {
+    case .help:
+        print(usage)
+        exit(0)
+    case .version:
+        print("swsql \(version)")
+        exit(0)
+    case .connect(let target):
+        // A connection named on the command line: use it as-is, unsaved.
+        launch(initial: .ephemeral(target), connections: savedConnections, environmentDefaults: environmentDefaults)
+    case .connectUsingDefaults:
+        // Nothing named: reconnect to the most recent saved connection, or open
+        // the setup screen when there are none.
+        if let recent = savedConnections.first {
+            launch(initial: .saved(recent), connections: savedConnections, environmentDefaults: environmentDefaults)
+        } else {
+            launch(initial: .setup, connections: savedConnections, environmentDefaults: environmentDefaults)
+        }
+    }
 }
+
+runApp()

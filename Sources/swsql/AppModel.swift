@@ -22,6 +22,7 @@ final class AppModel: ObservableObject {
         case structure
         case rowDetail
         case history
+        case connections
         case help
     }
 
@@ -120,89 +121,166 @@ final class AppModel: ObservableObject {
     // MARK: - Setup
 
     private let database: DatabaseService
-    private let store: ConnectionStore
+    private let store: ConnectionsStore
 
-    /// Where to connect. Nil until the user pastes a URL on the setup screen.
+    /// Where to connect. Nil until a connection is chosen on the setup screen.
     private var target: ConnectionTarget?
 
     /// The libpq environment/defaults target, used by the "environment defaults"
     /// escape hatch on the setup screen so the psql-style path stays reachable.
     private let environmentDefaults: ConnectionTarget
 
-    /// The raw string the user pasted, held until the connection it describes
-    /// actually succeeds - so a typo'd host is never persisted as if it worked.
-    private var pendingSave: String?
-
     /// Rows fetched for a table preview. Enough to be useful, small enough to stay snappy.
     private let previewLimit = 500
 
+    /// How the app opens: on a saved connection, on an ad-hoc one from the command
+    /// line, or on the setup screen because nothing is saved yet.
+    enum Initial {
+        case saved(SavedConnection)
+        case ephemeral(ConnectionTarget)
+        case setup
+    }
+
     init(
         database: DatabaseService,
-        store: ConnectionStore,
-        target: ConnectionTarget?,
+        store: ConnectionsStore,
+        connections: [SavedConnection],
+        initial: Initial,
         environmentDefaults: ConnectionTarget
     ) {
         self.database = database
         self.store = store
-        self.target = target
+        self.connections = connections
         self.environmentDefaults = environmentDefaults
 
-        if target == nil {
+        switch initial {
+        case .saved(let connection):
+            activeConnection = connection
+            target = Self.target(for: connection.connectionString)
+            if target == nil {
+                connectionState = .unconfigured
+                setStatus("saved connection \"\(connection.name)\" has an invalid URL - add it again", kind: .failure)
+            }
+        case .ephemeral(let ephemeralTarget):
+            target = ephemeralTarget
+        case .setup:
             connectionState = .unconfigured
-            setStatus("paste a PostgreSQL connection URL to begin", kind: .info)
+            setStatus("add a PostgreSQL connection to begin", kind: .info)
         }
     }
 
-    // MARK: - Choosing a connection
+    // MARK: - Connections
 
-    /// Accepts a pasted connection URL (a `postgres://` URI, a libpq keyword
-    /// string, or a bare database name), then connects. The string is remembered
-    /// for next launch only once the connection it describes succeeds.
-    func configure(_ input: String) {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            setStatus("paste a connection URL, e.g. postgres://user@host:5432/dbname", kind: .failure)
+    @Published private(set) var connections: [SavedConnection] = []
+
+    /// The saved connection currently in use, when there is one. Nil for an
+    /// environment-defaults or command-line connection. Drives the prod banner.
+    @Published private(set) var activeConnection: SavedConnection?
+
+    /// The name and production flag being entered on the setup screen. The URL
+    /// field commits them; these hold the parts the single-line fields cannot show.
+    @Published private(set) var draftName: String = ""
+    @Published private(set) var draftIsProduction = false
+
+    /// True while connected to a connection the user tagged as production.
+    var isConnectedToProduction: Bool {
+        guard case .connected = connectionState else { return false }
+        return activeConnection?.isProduction == true
+    }
+
+    func setDraftName(_ text: String) {
+        draftName = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !draftName.isEmpty { setStatus("name set to \"\(draftName)\"", kind: .info) }
+    }
+
+    func toggleDraftProduction() {
+        draftIsProduction.toggle()
+        setStatus(draftIsProduction ? "this connection will be marked as production" : "production mark cleared", kind: .info)
+    }
+
+    /// Adds the connection described on the setup screen and connects to it. It is
+    /// saved only once it actually connects, so a typo is never persisted.
+    func addConnection(url input: String) {
+        let connectionString = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !connectionString.isEmpty else {
+            setStatus("enter a connection URL, e.g. postgres://user@host:5432/dbname", kind: .failure)
             return
         }
-
-        let parsed: ConnectionTarget.Invocation
-        do {
-            parsed = try ConnectionTarget.parse(arguments: [trimmed])
-        } catch let error as ConnectionTarget.ParseError {
-            setStatus(error.description, kind: .failure)
-            return
-        } catch {
-            setStatus("\(error)", kind: .failure)
-            return
-        }
-
-        switch parsed {
-        case .connect(let target), .connectUsingDefaults(let target):
-            self.target = target
-            self.pendingSave = trimmed
-            start()
-        case .help, .version:
+        guard Self.target(for: connectionString) != nil else {
             setStatus("that does not look like a connection URL", kind: .failure)
+            return
         }
+        let name = draftName.isEmpty ? SavedConnection.defaultName(for: connectionString) : draftName
+        attempt(SavedConnection(name: name, connectionString: connectionString, isProduction: draftIsProduction))
+    }
+
+    /// Switches to a saved connection by name.
+    func connect(named name: String) {
+        guard let connection = ConnectionList.first(named: name, in: connections) else { return }
+        returnToData()
+        attempt(connection)
     }
 
     /// Connects the psql way, via libpq's own environment and defaults, without
     /// saving anything. Reached by submitting an empty URL on the setup screen.
     func useEnvironmentDefaults() {
+        activeConnection = nil
         target = environmentDefaults
-        pendingSave = nil
+        clearDraft()
         start()
     }
 
-    /// Returns to the setup screen to enter a different URL, e.g. to fix a wrong host.
-    func reconfigure() {
+    /// Opens the setup screen to add another connection, keeping the saved ones.
+    func beginAddConnection() {
         guard !isRunning else {
             setStatus("a statement is already running - cancel it first", kind: .failure)
             return
         }
-        pendingSave = nil
+        clearDraft()
         connectionState = .unconfigured
-        setStatus("paste a PostgreSQL connection URL", kind: .info)
+        setStatus("add a PostgreSQL connection", kind: .info)
+    }
+
+    /// Leaves the add screen without adding, reconnecting to where we were. Only
+    /// meaningful when at least one connection is already saved.
+    func cancelAdd() {
+        guard let connection = activeConnection ?? connections.first else { return }
+        attempt(connection)
+    }
+
+    /// Points the model at `connection` and connects, resetting the per-database
+    /// view state so the old catalog and results don't linger under the new one.
+    private func attempt(_ connection: SavedConnection) {
+        guard !isRunning else {
+            setStatus("a statement is already running - cancel it first", kind: .failure)
+            return
+        }
+        guard let resolved = Self.target(for: connection.connectionString) else {
+            setStatus("connection \"\(connection.name)\" has an invalid URL", kind: .failure)
+            return
+        }
+        activeConnection = connection
+        target = resolved
+        clearDraft()
+        objects = []
+        selectedObject = nil
+        structureColumns = []
+        objectFilter = ""
+        start()
+    }
+
+    private func clearDraft() {
+        draftName = ""
+        draftIsProduction = false
+    }
+
+    /// Parses a saved or entered connection string into a libpq target.
+    private static func target(for connectionString: String) -> ConnectionTarget? {
+        guard let invocation = try? ConnectionTarget.parse(arguments: [connectionString]) else { return nil }
+        switch invocation {
+        case .connect(let target), .connectUsingDefaults(let target): return target
+        case .help, .version: return nil
+        }
     }
 
     var isDisconnected: Bool {
@@ -228,7 +306,7 @@ final class AppModel: ObservableObject {
             switch outcome {
             case .success(let info):
                 self.connectionState = .connected(info)
-                self.setStatus("connected to \(info.database) (server \(info.serverVersion))\(self.persistPendingURL())", kind: .success)
+                self.setStatus("connected to \(info.database) (server \(info.serverVersion))\(self.persistActiveConnection())", kind: .success)
                 self.reloadObjects()
             case .failure(let error):
                 self.connectionState = .failed(error)
@@ -237,18 +315,17 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Saves the pasted URL now that it has proven it can connect. Returns a note
-    /// to append to the status line: empty when there was nothing to save, or a
-    /// warning if the save itself failed - a save failure must not lose the
-    /// working connection the user already has.
-    private func persistPendingURL() -> String {
-        guard let pending = pendingSave else { return "" }
-        pendingSave = nil
+    /// Saves the active connection now that it has proven it can connect, moving it
+    /// to the front of the most-recently-used list. Returns a note to append to the
+    /// status line; a save failure must not lose the working connection.
+    private func persistActiveConnection() -> String {
+        guard let active = activeConnection else { return "" }
+        connections = ConnectionList.upsert(active, into: connections)
         do {
-            try store.save(pending)
+            try store.save(connections)
             return ""
         } catch {
-            return "  ·  could not save the URL: \(error.localizedDescription)"
+            return "  ·  could not save the connection: \(error.localizedDescription)"
         }
     }
 
@@ -426,6 +503,10 @@ final class AppModel: ObservableObject {
 
     func toggleHistory() {
         show(pane == .history ? .data : .history)
+    }
+
+    func toggleConnections() {
+        pane = pane == .connections ? .data : .connections
     }
 
     func returnToData() {

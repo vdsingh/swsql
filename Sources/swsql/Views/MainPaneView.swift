@@ -26,6 +26,8 @@ struct MainPaneView: View {
             RowDetailPaneView(model: model, layout: layout)
         case .history:
             HistoryPaneView(model: model, layout: layout)
+        case .connections:
+            ConnectionsPaneView(model: model, layout: layout)
         case .help:
             HelpPaneView(model: model, layout: layout)
         }

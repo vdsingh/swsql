@@ -106,26 +106,36 @@ struct ControlsRow: View {
     let width: Int
 
     var body: some View {
+        // The paging controls are nested in their own HStack so this row stays
+        // under SwiftTUI's ten-children-per-stack limit once Conn is added; the
+        // uniform spacing makes the nesting invisible.
         HStack(spacing: 1) {
             Text(" ")
             // In an auxiliary pane the way back to the grid comes first, because it
             // is the first control the keyboard reaches from the pane above.
             backToRowsButton
-            Button("⇟", action: { model.nextPage() })
-            Button("⇞", action: { model.previousPage() })
-            Button("◀", action: { model.scrollColumns(by: -1) })
-            Button("▶", action: { model.scrollColumns(by: 1) })
+            HStack(spacing: 1) {
+                Button("⇟", action: { model.nextPage() })
+                Button("⇞", action: { model.previousPage() })
+                Button("◀", action: { model.scrollColumns(by: -1) })
+                Button("▶", action: { model.scrollColumns(by: 1) })
+            }
             Button("Struct", action: { model.toggleStructure() })
             Button("Hist", action: { model.toggleHistory() })
+            Button("Conn", action: { model.toggleConnections() })
             Button("?", action: { model.toggleHelp() })
-            if model.isRunning {
-                Button("Cancel", action: { model.cancel() }).foregroundColor(Theme.warning)
-            } else if model.isDisconnected {
-                Button("Reconnect", action: { model.start() }).foregroundColor(Theme.warning)
-                Button("Edit URL", action: { model.reconfigure() })
-            } else {
-                Text(position).foregroundColor(Theme.dim)
-            }
+            trailing
+        }
+    }
+
+    @ViewBuilder
+    private var trailing: some View {
+        if model.isRunning {
+            Button("Cancel", action: { model.cancel() }).foregroundColor(Theme.warning)
+        } else if model.isDisconnected {
+            Button("Reconnect", action: { model.start() }).foregroundColor(Theme.warning)
+        } else {
+            Text(position).foregroundColor(Theme.dim)
         }
     }
 
