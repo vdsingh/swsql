@@ -171,6 +171,33 @@ public enum Catalog {
             )
         }
     }
+
+    /// Every user column across the database, for editor autocomplete. Kept cheap
+    /// (names only) and run once per connection.
+    public static let allColumnsSQL = """
+        SELECT c.relname AS table, a.attname AS column
+        FROM pg_attribute a
+        JOIN pg_class c ON c.oid = a.attrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE a.attnum > 0
+          AND NOT a.attisdropped
+          AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg_toast%'
+          AND n.nspname NOT LIKE 'pg_temp%'
+        ORDER BY a.attname
+        """
+
+    public static func parseColumnReferences(_ result: QueryResult) -> [(table: String, column: String)] {
+        let tableIndex = result.columns.firstIndex { $0.name == "table" }
+        let columnIndex = result.columns.firstIndex { $0.name == "column" }
+        guard let columnIndex else { return [] }
+        return result.rows.compactMap { row in
+            guard let column = row[safe: columnIndex] ?? nil else { return nil }
+            let table = (tableIndex.flatMap { row[safe: $0] ?? nil }) ?? ""
+            return (table: table, column: column)
+        }
+    }
 }
 
 extension Array {

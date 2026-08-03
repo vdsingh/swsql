@@ -269,6 +269,8 @@ final class AppModel: ObservableObject {
         target = resolved
         clearDraft()
         objects = []
+        columnReferences = []
+        dismissCompletions()
         selectedObject = nil
         structureColumns = []
         objectFilter = ""
@@ -350,6 +352,8 @@ final class AppModel: ObservableObject {
             switch outcome {
             case .success(let result):
                 self.objects = Catalog.parseObjects(result)
+                self.rebuildVocabulary()
+                self.loadColumnsForCompletion()
                 if self.objects.isEmpty {
                     self.setStatus("no user tables or views in this database", kind: .info)
                 }
@@ -447,6 +451,77 @@ final class AppModel: ObservableObject {
         setStatus("formatted", kind: .success)
     }
 
+    // MARK: - Autocomplete
+
+    @Published private(set) var completions: [CompletionItem] = []
+    @Published private(set) var completionIndex = 0
+    var hasCompletions: Bool { !completions.isEmpty }
+
+    /// Cached completion vocabulary, rebuilt when the catalog changes.
+    private var vocabulary: [CompletionItem] = []
+    private var columnReferences: [(table: String, column: String)] = []
+
+    private static let completionKeywords = [
+        "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "NULL", "AS", "ON", "IN", "IS", "LIKE",
+        "BETWEEN", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "FULL", "CROSS", "GROUP", "ORDER",
+        "BY", "HAVING", "LIMIT", "OFFSET", "UNION", "ALL", "DISTINCT", "INSERT", "INTO", "VALUES",
+        "UPDATE", "SET", "DELETE", "RETURNING", "WITH", "CASE", "WHEN", "THEN", "ELSE", "END",
+        "ASC", "DESC", "EXISTS",
+    ]
+
+    /// Called by the editor whenever the text under the cursor changes.
+    func editorLineChanged(_ linePrefix: String) {
+        let items = SQLCompletion.complete(linePrefix: linePrefix, vocabulary: vocabulary)
+        guard items != completions else { return }
+        completions = items
+        completionIndex = 0
+    }
+
+    /// Handles a key the editor forwarded because the completion menu is open.
+    /// Returns whether it was consumed (false lets the editor handle the key).
+    func handleMenuKey(_ key: TextEditorMenuKey) -> Bool {
+        guard hasCompletions else { return false }
+        switch key {
+        case .up: completionIndex = max(0, completionIndex - 1)
+        case .down: completionIndex = min(completions.count - 1, completionIndex + 1)
+        case .accept:
+            document.complete(with: completions[completionIndex].text)
+            dismissCompletions()
+        case .dismiss:
+            dismissCompletions()
+        }
+        return true
+    }
+
+    func dismissCompletions() {
+        completions = []
+        completionIndex = 0
+    }
+
+    private func rebuildVocabulary() {
+        var items = Self.completionKeywords.map { CompletionItem(text: $0, detail: "keyword", kind: .keyword) }
+        for object in objects {
+            let kind: CompletionItem.Kind = (object.kind == .view || object.kind == .materializedView) ? .view : .table
+            items.append(CompletionItem(text: object.name, detail: "\(object.schema) · \(object.kind.label)", kind: kind))
+        }
+        var seen = Set<String>()
+        for reference in columnReferences where seen.insert(reference.column.lowercased()).inserted {
+            items.append(CompletionItem(text: reference.column, detail: "column", kind: .column))
+        }
+        vocabulary = items
+    }
+
+    /// Loads every column name once per connection, for autocomplete. Best effort.
+    private func loadColumnsForCompletion() {
+        database.execute(Catalog.allColumnsSQL) { [weak self] outcome in
+            guard let self else { return }
+            if case .success(let result) = outcome {
+                self.columnReferences = Catalog.parseColumnReferences(result)
+                self.rebuildVocabulary()
+            }
+        }
+    }
+
     // MARK: - Query execution
 
     func run(_ sql: String) {
@@ -490,6 +565,7 @@ final class AppModel: ObservableObject {
         columnOffset = 0
         focusedRow = 0
         pane = .data
+        dismissCompletions()
         setStatus("running…", kind: .info)
     }
 

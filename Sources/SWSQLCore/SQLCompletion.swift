@@ -69,11 +69,12 @@ public enum SQLCompletion {
         for item in vocabulary {
             if isColumnContext, item.kind != .column { continue }
             let name = item.text.lowercased()
-            let prefixMatch = name.hasPrefix(needle)
-            guard prefixMatch || name.contains(needle) else { continue }
+            // Prefix matching only: typing a full name (e.g. "users") shouldn't keep
+            // the menu open on a substring match (e.g. "active_users").
+            guard name.hasPrefix(needle) else { continue }
             // Don't suggest the word the user has already typed in full.
             if name == needle { continue }
-            scored.append(Scored(item: item, prefix: prefixMatch, rank: kindRank(item.kind, isTableContext: isTableContext, isColumnContext: isColumnContext)))
+            scored.append(Scored(item: item, prefix: true, rank: kindRank(item.kind, isTableContext: isTableContext, isColumnContext: isColumnContext)))
         }
 
         scored.sort { a, b in

@@ -16,7 +16,7 @@ let package = Package(
         // shift underfoot.
         .package(
             url: "https://github.com/vdsingh/SwiftTUI.git",
-            revision: "38d38fc5ccddd747d46173eacae834fd855d7b8f"
+            revision: "28d44bf9c012f6606ad330488e1075da93cee201"
         )
     ],
     targets: [

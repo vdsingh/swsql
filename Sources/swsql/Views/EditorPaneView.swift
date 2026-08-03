@@ -16,7 +16,9 @@ struct EditorPaneView: View {
             TextEditor(
                 document: model.document,
                 placeholder: "type a SQL statement  —  ⌃R or Run ▶ to execute,  ⏎ for a new line",
-                onRun: { model.runCurrentQuery() }
+                onRun: { model.runCurrentQuery() },
+                onChange: { model.editorLineChanged($0) },
+                menuKey: { model.handleMenuKey($0) }
             )
             .frame(width: Extended(layout.width), height: Extended(layout.editorHeight))
             .background(Color.xterm(white: 2))

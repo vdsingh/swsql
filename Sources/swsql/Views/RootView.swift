@@ -31,7 +31,12 @@ struct RootView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TitleBarView(model: model, width: layout.width)
                 EditorPaneView(model: model, layout: layout)
-                BodyView(model: model, layout: layout)
+                CompletionMenuView(model: model, width: layout.width)
+                // The completion menu takes rows from the body while it is open.
+                BodyView(model: model, layout: ScreenLayout(
+                    width: layout.width,
+                    height: layout.height - CompletionMenuView.height(for: model.completions.count)
+                ))
                 StatusBarView(model: model, width: layout.width)
                 KeyHintsView(model: model, width: layout.width)
             }

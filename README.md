@@ -23,8 +23,8 @@ A PostgreSQL client for the terminal, written in Swift with
 
 - **Browse** every table, view, materialised view and foreign table in the
   database, with row estimates and a filter.
-- **Write** SQL in a multi-line editor with a movable cursor, and **format** it
-  with one keystroke.
+- **Write** SQL in a multi-line editor with autocomplete for keywords, tables and
+  columns, and **format** it with one keystroke.
 - **Run** any statement and read the result in an aligned grid, with NULL shown
   as `∅` so it can never be confused with the string `"NULL"`, numbers flushed
   right, and embedded newlines and tabs made visible instead of tearing the
@@ -154,6 +154,11 @@ The SQL input is a multi-line editor.
   clause starts a new line, list items are indented, and subqueries are nested -
   while string literals and comments are left exactly as written.
 - **`Clear`** empties the editor.
+- **Autocomplete:** as you type an identifier, a dropdown of matching SQL
+  keywords, tables/views and columns (from the connected database) appears under
+  the editor. `↑ ↓` pick, `⏎` or `Tab` insert, `Esc` closes. Suggestions are
+  context-aware - tables rank first after `FROM`/`JOIN`, columns after a
+  `qualifier.`.
 - Choosing a statement from `Hist` loads it back into the editor to edit or run
   again.
 
@@ -216,9 +221,8 @@ the upstream library is keyboard-only, and the fork adds the SGR mouse handling.
 - Column widths are measured once per result from the first 200 rows and capped
   at 44 characters, so a single JSON blob cannot push every other column off the
   screen.
-- The SQL editor is a plain text area, not a syntax-highlighting IDE: no
-  autocomplete, and the formatter aims at readable everyday SQL rather than
-  covering every dialect corner.
+- The SQL editor has completion but no syntax highlighting, and the formatter
+  aims at readable everyday SQL rather than covering every dialect corner.
 - Character widths are counted per grapheme cluster, matching how SwiftTUI draws
   cells. Wide CJK glyphs and emoji will therefore sit a little loose in a column.
 
