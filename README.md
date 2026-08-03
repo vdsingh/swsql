@@ -94,7 +94,8 @@ without saving anything.
 swsql remembers every connection you add, so you can keep `staging` and `prod`
 side by side and switch between them:
 
-- The `Conn` button opens the connection list. Pick one to connect to it, or
+- Click the connection shown in the title bar (marked with a `▾`), or press the
+  `Conn` button, to open the connection list. Pick one to connect to it, or
   choose `＋ Add a connection` to add another.
 - `swsql` with no arguments reconnects to the one you used last; `swsql <name>`
   opens a saved connection by name.

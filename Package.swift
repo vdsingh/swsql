@@ -12,11 +12,11 @@ let package = Package(
     ],
     dependencies: [
         // A fork of rensbreur/SwiftTUI that adds terminal mouse support (click to
-        // focus/activate, wheel to scroll). Pinned to an exact commit rather than
-        // a branch so the dependency cannot shift underfoot.
+        // focus/activate, wheel to scroll) and `.onClick` for clickable-but-not-
+        // focusable views. Pinned to an exact commit so it cannot shift underfoot.
         .package(
             url: "https://github.com/vdsingh/SwiftTUI.git",
-            revision: "7a9ca3fbd8931e38c658fdc23c2918842848a0a5"
+            revision: "12479f67bd42e812308cdf458a46bd77bce3a4f6"
         )
     ],
     targets: [

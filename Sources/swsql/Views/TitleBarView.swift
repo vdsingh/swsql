@@ -9,11 +9,14 @@ struct TitleBarView: View {
 
     var body: some View {
         // Connected to a production-tagged database, the whole bar turns into a
-        // warning banner so the environment can never be mistaken.
+        // warning banner so the environment can never be mistaken. Clicking the
+        // bar opens the connection selector; `.onClick` keeps it out of keyboard
+        // focus, so the prompt still takes the initial focus and typed input.
         Text(line)
             .background(model.isConnectedToProduction ? Theme.failure : Theme.headerBackground)
             .foregroundColor(Theme.headerForeground)
             .bold()
+            .onClick { model.toggleConnections() }
     }
 
     private var line: String {
@@ -21,10 +24,16 @@ struct TitleBarView: View {
         // The connection state is the part worth keeping when space runs out, so
         // the description on the left is what gets truncated.
         let leftBudget = max(1, width - right.count - 1)
-        let left = DisplayText.truncate(" swsql  \(label)\(target)", to: leftBudget)
+        let left = DisplayText.truncate(" swsql  \(label)\(target)\(chevron)", to: leftBudget)
 
         let gap = max(1, width - left.count - right.count)
         return DisplayText.truncate(left + String(repeating: " ", count: gap) + right, to: width)
+    }
+
+    /// A hint that the connection is a selector, shown once there is something to
+    /// select (not on the setup screen).
+    private var chevron: String {
+        model.connectionState == .unconfigured ? "" : "  ▾"
     }
 
     /// The active connection's name, when it has one, so multiple databases are
