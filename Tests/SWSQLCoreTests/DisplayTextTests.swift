@@ -2,6 +2,39 @@ import XCTest
 @testable import SWSQLCore
 
 final class DisplayTextTests: XCTestCase {
+    // MARK: - wrap
+
+    func testWrapKeepsShortTextOnOneLine() {
+        XCTAssertEqual(DisplayText.wrap("short", to: 10), ["short"])
+    }
+
+    func testWrapBreaksOnSpaces() {
+        XCTAssertEqual(DisplayText.wrap("the quick brown fox", to: 9), ["the quick", "brown fox"])
+    }
+
+    func testWrapHardBreaksAWordLongerThanTheWidth() {
+        XCTAssertEqual(DisplayText.wrap("abcdefghij", to: 4), ["abcd", "efgh", "ij"])
+        // a long URL with no spaces still fits the width exactly
+        for line in DisplayText.wrap("postgres://user@really.long.host.example.com/database", to: 12) {
+            XCTAssertLessThanOrEqual(line.count, 12)
+        }
+    }
+
+    func testWrapNeverExceedsTheWidth() {
+        let text = "Examples: postgres://user@host/db · host=db dbname=shop · mydb"
+        for width in [10, 20, 40, 80] {
+            for line in DisplayText.wrap(text, to: width) {
+                XCTAssertLessThanOrEqual(line.count, width, "width \(width)")
+            }
+        }
+    }
+
+    func testWrapAlwaysReturnsAtLeastOneLine() {
+        XCTAssertEqual(DisplayText.wrap("", to: 10), [""])
+    }
+
+    // MARK: - singleLine / truncate
+
     func testNewlinesAndTabsAreReplacedSoTheGridStaysIntact() {
         let collapsed = DisplayText.singleLine("a\nb\tc\rd")
 

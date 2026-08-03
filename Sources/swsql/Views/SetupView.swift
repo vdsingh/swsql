@@ -23,9 +23,13 @@ struct SetupView: View {
             blank
             steps
             Filler(height: fillerHeight, width: layout.width)
-            examplesRow
+            ForEach(examplesLines.indexed) { line in
+                Text(DisplayText.pad("  " + line.value, to: layout.width, alignment: .left)).foregroundColor(Theme.dim)
+            }
             StatusBarView(model: model, width: layout.width)
-            hintRow
+            ForEach(hintLines.indexed) { line in
+                Text(DisplayText.pad("  " + line.value, to: layout.width, alignment: .left)).foregroundColor(Theme.dim)
+            }
         }
     }
 
@@ -124,23 +128,25 @@ struct SetupView: View {
         }
     }
 
-    private var examplesRow: some View {
-        Text(DisplayText.truncate("  Examples:  postgres://user@host/db   ·   postgresql://alice@db/shop?sslmode=require   ·   host=db dbname=shop   ·   mydb", to: max(1, layout.width - 1)))
-            .foregroundColor(Theme.dim)
+    // Prose that can outrun a narrow terminal is wrapped onto extra lines rather
+    // than truncated, so nothing important is cut off.
+    private var examplesText: String {
+        "Examples:  postgres://user@host/db  ·  postgresql://alice@db/shop?sslmode=require  ·  host=db dbname=shop  ·  mydb"
     }
-
-    private var hintRow: some View {
-        Text(DisplayText.pad("  ⏎ in the URL box connects   ·   an empty URL uses your PG* environment   ·   ^C quit", to: layout.width, alignment: .left))
-            .foregroundColor(Theme.dim)
+    private var hintText: String {
+        "⏎ in the URL box connects  ·  an empty URL uses your PG* environment  ·  ^C quit"
     }
+    private var examplesLines: [String] { DisplayText.wrap(examplesText, to: max(1, layout.width - 2)) }
+    private var hintLines: [String] { DisplayText.wrap(hintText, to: max(1, layout.width - 2)) }
 
     private var blank: some View {
         Text(String(repeating: " ", count: max(1, layout.width)))
     }
 
-    /// title(1) + blank(1) + rule(1) + blank(1) + steps(8) + filler + examples(1)
-    /// + status(1) + hint(1) == layout.height.
+    /// title(1) + blank(1) + rule(1) + blank(1) + steps(8) + filler + examples +
+    /// status(1) + hint == layout.height, with examples and hint each wrapping to
+    /// however many lines they need.
     private var fillerHeight: Int {
-        max(0, layout.height - 15)
+        max(0, layout.height - 13 - examplesLines.count - hintLines.count)
     }
 }

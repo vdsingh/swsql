@@ -32,6 +32,36 @@ public enum DisplayText {
         return output
     }
 
+    /// Wraps `text` into lines no wider than `width`, breaking on spaces where it
+    /// can and hard-breaking any single word longer than `width` (a long URL, say).
+    /// Control characters and embedded newlines are first flattened, then re-wrapped,
+    /// so the result is always exactly `width`-safe. Returns at least one line.
+    public static func wrap(_ text: String, to width: Int) -> [String] {
+        guard width > 0 else { return [""] }
+        let words = singleLine(text).split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        var lines: [String] = []
+        var current = ""
+        for original in words {
+            var word = original
+            while word.count > width {
+                if !current.isEmpty { lines.append(current); current = "" }
+                lines.append(String(word.prefix(width)))
+                word = String(word.dropFirst(width))
+            }
+            if word.isEmpty { continue }
+            if current.isEmpty {
+                current = word
+            } else if current.count + 1 + word.count <= width {
+                current += " " + word
+            } else {
+                lines.append(current)
+                current = word
+            }
+        }
+        if !current.isEmpty { lines.append(current) }
+        return lines.isEmpty ? [""] : lines
+    }
+
     /// Shortens to `width`, marking the cut with an ellipsis.
     public static func truncate(_ text: String, to width: Int) -> String {
         guard width > 0 else { return "" }

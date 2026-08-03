@@ -200,15 +200,28 @@ struct ErrorPaneView: View {
     let layout: ScreenLayout
 
     var body: some View {
-        let lines = Array(error.lines.prefix(layout.paneContentHeight))
+        // Each field of the error is wrapped rather than truncated, so a long
+        // message, detail or hint can be read in full; the first field (the
+        // summary) stays in the failure colour across its wrapped lines.
+        let shown = Array(wrappedLines.prefix(layout.paneContentHeight))
 
         return VStack(alignment: .leading, spacing: 0) {
-            ForEach(lines.indexed) { line in
-                Text(" " + DisplayText.truncate(DisplayText.singleLine(line.value), to: max(1, layout.mainWidth - 2)))
-                    .foregroundColor(line.id == 0 ? Theme.failure : Theme.dim)
+            ForEach(shown.indexed) { line in
+                Text(" " + line.value.text)
+                    .foregroundColor(line.value.isPrimary ? Theme.failure : Theme.dim)
             }
-            Filler(height: layout.paneContentHeight - lines.count, width: layout.mainWidth)
+            Filler(height: layout.paneContentHeight - shown.count, width: layout.mainWidth)
         }
+    }
+
+    private var wrappedLines: [(text: String, isPrimary: Bool)] {
+        var lines: [(text: String, isPrimary: Bool)] = []
+        for (index, field) in error.lines.enumerated() {
+            for wrapped in DisplayText.wrap(field, to: max(1, layout.mainWidth - 2)) {
+                lines.append((text: wrapped, isPrimary: index == 0))
+            }
+        }
+        return lines
     }
 }
 
