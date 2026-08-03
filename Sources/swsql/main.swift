@@ -48,7 +48,17 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
     // target and start() is a no-op, so the app opens on the setup screen.
     model.start()
 
-    Application(rootView: RootView(model: model)).start()
+    let application = Application(rootView: RootView(model: model))
+    // Ctrl-R runs the query from anywhere, not only while the editor has focus -
+    // this is also what a terminal Cmd-R→^R remap triggers.
+    application.keyHandler = { character in
+        if character == "\u{12}" {
+            model.runCurrentQuery()
+            return true
+        }
+        return false
+    }
+    application.start()
 }
 
 func runApp() {
