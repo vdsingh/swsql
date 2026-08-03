@@ -194,8 +194,13 @@ final class AppModel: ObservableObject {
     }
 
     func toggleDraftProduction() {
-        draftIsProduction.toggle()
-        setStatus(draftIsProduction ? "this connection will be marked as production" : "production mark cleared", kind: .info)
+        setDraftProduction(!draftIsProduction)
+    }
+
+    func setDraftProduction(_ isProduction: Bool) {
+        guard draftIsProduction != isProduction else { return }
+        draftIsProduction = isProduction
+        setStatus(isProduction ? "this connection will be marked as production" : "marked as non-production", kind: .info)
     }
 
     /// Adds the connection described on the setup screen and connects to it. It is
@@ -272,6 +277,13 @@ final class AppModel: ObservableObject {
     private func clearDraft() {
         draftName = ""
         draftIsProduction = false
+    }
+
+    /// Clears just the name so its field reappears for re-entry (the `change` link
+    /// on the setup screen), leaving the production choice untouched.
+    func clearDraftName() {
+        draftName = ""
+        setStatus("type a new name and press ⏎", kind: .info)
     }
 
     /// Parses a saved or entered connection string into a libpq target.
