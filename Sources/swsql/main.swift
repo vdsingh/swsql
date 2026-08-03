@@ -52,11 +52,16 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
     // Ctrl-R runs the query from anywhere, not only while the editor has focus -
     // this is also what a terminal Cmd-R→^R remap triggers.
     application.keyHandler = { character in
-        if character == "\u{12}" {
+        switch character {
+        case "\u{12}": // Ctrl-R (also a Cmd-R / Cmd-Enter remap): run
             model.runCurrentQuery()
             return true
+        case "\u{06}": // Ctrl-F (also a Cmd-F remap): format
+            model.formatQuery()
+            return true
+        default:
+            return false
         }
-        return false
     }
     application.start()
 }
