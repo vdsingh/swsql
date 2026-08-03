@@ -436,6 +436,17 @@ final class AppModel: ObservableObject {
         setStatus("editor cleared", kind: .info)
     }
 
+    /// Pretty-prints the editor's SQL in place.
+    func formatQuery() {
+        let trimmed = document.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            setStatus("nothing to format", kind: .info)
+            return
+        }
+        document.set(SQLFormatter.format(document.text))
+        setStatus("formatted", kind: .success)
+    }
+
     // MARK: - Query execution
 
     func run(_ sql: String) {

@@ -29,8 +29,9 @@ struct EditorPaneView: View {
         HStack(spacing: 1) {
             Text(" ")
             Button("Run ▶", action: { model.runCurrentQuery() }).foregroundColor(Theme.success).bold()
+            Button("Format", action: { model.formatQuery() }).foregroundColor(Theme.accent)
             Button("Clear", action: { model.clearEditor() }).foregroundColor(Theme.dim)
-            Text(DisplayText.pad("   ⌃R run  ·  ⏎ newline  ·  ↑↓←→ move the cursor", to: max(1, layout.width - 18), alignment: .left))
+            Text(DisplayText.pad("   ⌃R run  ·  ⏎ newline  ·  ↑↓←→ move the cursor", to: max(1, layout.width - 26), alignment: .left))
                 .foregroundColor(Theme.dim)
         }
     }

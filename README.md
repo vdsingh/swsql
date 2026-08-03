@@ -23,6 +23,8 @@ A PostgreSQL client for the terminal, written in Swift with
 
 - **Browse** every table, view, materialised view and foreign table in the
   database, with row estimates and a filter.
+- **Write** SQL in a multi-line editor with a movable cursor, and **format** it
+  with one keystroke.
 - **Run** any statement and read the result in an aligned grid, with NULL shown
   as `∅` so it can never be confused with the string `"NULL"`, numbers flushed
   right, and embedded newlines and tabs made visible instead of tearing the
@@ -131,7 +133,23 @@ The buttons under the results do the rest: `⇟` `⇞` page through a large resu
 columns, `Hist` lists earlier statements, `Conn` switches between saved
 connections, `?` opens help, and `Rows` returns to the grid from any other pane.
 
-The object filter and the SQL prompt are text fields: type, then press `⏎`.
+The object filter is a single-line field: type, then press `⏎`.
+
+## Editing SQL
+
+The SQL input is a multi-line editor. `↑ ↓ ← →` move the cursor within the text
+(and step out to the sidebar or buttons at the edges), `⏎` inserts a new line,
+`^A` / `^E` jump to the start / end of the line, and `⌫` deletes.
+
+- **`^R`**, or the **`Run ▶`** button, executes the whole editor. (`^R` runs when
+  the editor has focus; the button runs from anywhere. Terminals can't see
+  `⌘`, so the shortcut is `^R` rather than `⌘R`.)
+- **`Format`** pretty-prints the query in place: keywords are upper-cased, each
+  clause starts a new line, list items are indented, and subqueries are nested -
+  while string literals and comments are left exactly as written.
+- **`Clear`** empties the editor.
+- Choosing a statement from `Hist` loads it back into the editor to edit or run
+  again.
 
 ## Mouse
 
@@ -154,9 +172,9 @@ the upstream library is keyboard-only, and the fork adds the SGR mouse handling.
 - Column widths are measured once per result from the first 200 rows and capped
   at 44 characters, so a single JSON blob cannot push every other column off the
   screen.
-- Statements are entered on one line. SwiftTUI's text field is single-line and
-  cannot be pre-filled, which is also why recalling an earlier statement is done
-  through the history pane rather than by pressing `↑` at the prompt.
+- The SQL editor is a plain text area, not a syntax-highlighting IDE: no
+  autocomplete, and the formatter aims at readable everyday SQL rather than
+  covering every dialect corner.
 - Character widths are counted per grapheme cluster, matching how SwiftTUI draws
   cells. Wide CJK glyphs and emoji will therefore sit a little loose in a column.
 
