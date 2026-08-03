@@ -137,19 +137,63 @@ The object filter is a single-line field: type, then press `⏎`.
 
 ## Editing SQL
 
-The SQL input is a multi-line editor. `↑ ↓ ← →` move the cursor within the text
-(and step out to the sidebar or buttons at the edges), `⏎` inserts a new line,
-`^A` / `^E` jump to the start / end of the line, and `⌫` deletes.
+The SQL input is a multi-line editor.
 
-- **`^R`**, or the **`Run ▶`** button, executes the whole editor. (`^R` runs when
-  the editor has focus; the button runs from anywhere. Terminals can't see
-  `⌘`, so the shortcut is `^R` rather than `⌘R`.)
+| Key | Does |
+| --- | --- |
+| `↑ ↓ ← →` | move the cursor (and step out to the sidebar / buttons at the edges) |
+| `⌥ ←` / `⌥ →` &nbsp;(or `^← / ^→`) | move by word |
+| `⌘ ←` / `⌘ →`, `Home` / `End` | jump to line start / end (`^A` / `^E` too) |
+| `⌘ ↑` / `⌘ ↓` | jump to the start / end of the whole query |
+| `⏎` | insert a new line |
+| `⌫` | delete a character; `⌥ ⌫` deletes the previous word |
+| `^R` | run the query (from anywhere) |
+
+- **`^R`**, or the **`Run ▶`** button, executes the whole editor.
 - **`Format`** pretty-prints the query in place: keywords are upper-cased, each
   clause starts a new line, list items are indented, and subqueries are nested -
   while string literals and comments are left exactly as written.
 - **`Clear`** empties the editor.
 - Choosing a statement from `Hist` loads it back into the editor to edit or run
   again.
+
+### Terminal setup for `⌘` and `⌥` keys
+
+swsql understands the standard escape sequences terminals send for these keys, so
+it works in any terminal that can send them - but two things depend on your
+terminal, not on swsql:
+
+- **`⌘` (Command) is never delivered to a terminal program** - macOS keeps it for
+  menu shortcuts. To use `⌘R`, `⌘←/→`, `⌘↑/↓`, remap them in your terminal to send
+  the sequences swsql reads. Apple's **Terminal.app cannot** remap `⌘`; use the
+  `^`/`⌥` keys there instead. iTerm2, WezTerm, Kitty and Ghostty can.
+- **`⌥` (Option)** must be sent as Meta for `⌥←/→` and `⌥⌫` to work (in
+  Terminal.app: *Profiles → Keyboard → Use Option as Meta key*).
+
+Example for **WezTerm + tmux** (`~/.wezterm.lua`):
+
+```lua
+local act = require('wezterm').action
+return {
+  keys = {
+    { key = 'r',          mods = 'CMD', action = act.SendString('\x12')     }, -- ⌘R  → run
+    { key = 'LeftArrow',  mods = 'CMD', action = act.SendString('\x1b[H')   }, -- ⌘←  → line start
+    { key = 'RightArrow', mods = 'CMD', action = act.SendString('\x1b[F')   }, -- ⌘→  → line end
+    { key = 'UpArrow',    mods = 'CMD', action = act.SendString('\x1b[1;5H')}, -- ⌘↑  → query start
+    { key = 'DownArrow',  mods = 'CMD', action = act.SendString('\x1b[1;5F')}, -- ⌘↓  → query end
+    { key = 'LeftArrow',  mods = 'OPT', action = act.SendString('\x1b[1;3D')}, -- ⌥←  → word left
+    { key = 'RightArrow', mods = 'OPT', action = act.SendString('\x1b[1;3C')}, -- ⌥→  → word right
+    { key = 'Backspace',  mods = 'OPT', action = act.SendString('\x1b\x7f') }, -- ⌥⌫  → delete word
+  },
+}
+```
+
+In `~/.tmux.conf`, let modified keys through (and keep the prefix off `^R`):
+
+```tmux
+set -g xterm-keys on
+set -s extended-keys on
+```
 
 ## Mouse
 
