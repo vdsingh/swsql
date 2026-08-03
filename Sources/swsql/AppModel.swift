@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SWSQLCore
+import SwiftTUI
 
 /// All of the application's state, owned by the main queue.
 ///
@@ -414,6 +415,27 @@ final class AppModel: ObservableObject {
         })
     }
 
+    // MARK: - SQL editor
+
+    /// The multi-line SQL editor's text. The editor owns it and writes into this
+    /// handle as the user types; the model reads it to run or format, and pushes
+    /// new text in (formatting, recalling a statement) via `document.set`.
+    let document = EditorDocument()
+
+    /// Runs whatever is in the editor. Bound to the editor's Ctrl-R and Run button.
+    func runCurrentQuery() {
+        run(document.text)
+    }
+
+    func clearEditor() {
+        guard !isRunning else {
+            setStatus("a statement is already running - cancel it first", kind: .failure)
+            return
+        }
+        document.set("")
+        setStatus("editor cleared", kind: .info)
+    }
+
     // MARK: - Query execution
 
     func run(_ sql: String) {
@@ -532,9 +554,13 @@ final class AppModel: ObservableObject {
         show(.rowDetail)
     }
 
-    func runHistoryEntry(at index: Int) {
+    /// Loads a previous statement into the editor so it can be reviewed or edited
+    /// before running - now possible because the editor can be pre-filled.
+    func recall(at index: Int) {
         guard index < history.count else { return }
-        run(history[index])
+        document.set(history[index])
+        returnToData()
+        setStatus("loaded into the editor - ⌃R or Run ▶ to execute", kind: .info)
     }
 
     // MARK: - Viewport

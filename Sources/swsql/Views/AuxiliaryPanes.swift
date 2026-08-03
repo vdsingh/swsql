@@ -93,7 +93,7 @@ struct HistoryPaneView: View {
                 .bold()
             ForEach(entries.indexed) { entry in
                 Button(
-                    action: { model.runHistoryEntry(at: entry.id) },
+                    action: { model.recall(at: entry.id) },
                     label: {
                         Text(" " + DisplayText.pad(DisplayText.singleLine(entry.value), to: max(1, layout.mainWidth - 1), alignment: .left))
                     }

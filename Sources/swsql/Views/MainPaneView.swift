@@ -34,38 +34,3 @@ struct MainPaneView: View {
     }
 }
 
-/// The SQL entry line. SwiftTUI's text field clears itself on submit, so the
-/// statement that ran is echoed on the line below instead of staying in the field.
-struct PromptView: View {
-    @ObservedObject var model: AppModel
-    let width: Int
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Text(" sql> ").foregroundColor(Theme.accent).bold()
-            TextField(placeholder: "type a statement and press ⏎") { statement in
-                model.run(statement)
-            }
-            .frame(width: Extended(max(1, width - 6)))
-        }
-    }
-}
-
-/// A dim recap of the statement that produced what is on screen.
-struct EchoView: View {
-    @ObservedObject var model: AppModel
-    let width: Int
-
-    var body: some View {
-        Text(DisplayText.pad(" " + text, to: width, alignment: .left))
-            .foregroundColor(Theme.dim)
-            .italic()
-    }
-
-    private var text: String {
-        guard !model.lastStatement.isEmpty else {
-            return "no statement run yet - pick a table on the left, or type one above"
-        }
-        return DisplayText.truncate(DisplayText.singleLine(model.lastStatement), to: max(1, width - 2))
-    }
-}

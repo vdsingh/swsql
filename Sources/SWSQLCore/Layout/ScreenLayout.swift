@@ -15,13 +15,24 @@ public struct ScreenLayout: Equatable {
     /// Hide the sidebar rather than squeeze the results into nothing.
     public static let sidebarHiddenBelowWidth = 78
 
-    /// Lines of chrome outside the body: title bar, prompt, statement echo,
-    /// status line and key hints.
-    public static let chromeHeight = 5
+    /// Preferred height of the multi-line SQL editor, before clamping to the terminal.
+    public static let preferredEditorHeight = 6
 
     /// Lines the data pane spends on its own furniture: column header, rule and
     /// the row of controls underneath.
     public static let dataPaneChromeHeight = 3
+
+    /// Lines the SQL editor occupies: enough for a few lines of a query, but never
+    /// so many that the result grid is left with no room.
+    public var editorHeight: Int {
+        max(2, min(ScreenLayout.preferredEditorHeight, height - 8))
+    }
+
+    /// Lines of chrome outside the body: title bar (1), the editor pane, its
+    /// toolbar (1), the status line (1) and the key hints (1).
+    public var chromeHeight: Int {
+        editorHeight + 4
+    }
 
     public var width: Int
     public var height: Int
@@ -51,7 +62,7 @@ public struct ScreenLayout: Equatable {
     }
 
     public var bodyHeight: Int {
-        max(1, height - ScreenLayout.chromeHeight)
+        max(1, height - chromeHeight)
     }
 
     /// Rows of the object list, after its own header and filter field.

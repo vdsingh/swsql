@@ -30,8 +30,7 @@ struct RootView: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 TitleBarView(model: model, width: layout.width)
-                PromptView(model: model, width: layout.width)
-                EchoView(model: model, width: layout.width)
+                EditorPaneView(model: model, layout: layout)
                 BodyView(model: model, layout: layout)
                 StatusBarView(model: model, width: layout.width)
                 KeyHintsView(model: model, width: layout.width)

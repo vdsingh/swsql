@@ -105,13 +105,13 @@ struct KeyHintsView: View {
         case .rowDetail:
             return "↑↓←→ move   [Rows] returns to the grid   ^C quit"
         case .history:
-            return "↑↓ pick   ⏎ run again   ^C quit"
+            return "↑↓ pick   ⏎ load into the editor   ^C quit"
         case .connections:
             return "↑↓ pick   ⏎ switch   [＋ Add] adds one   ^C quit"
         case .structure:
             return "↑↓←→ move   [Rows] returns to the grid   ^C quit"
         case .data:
-            return "↑↓←→ move   ⏎ run / inspect row   ^C quit"
+            return "⌃R run   ⏎ newline (editor) / open row   ↑↓←→ move   ^C quit"
         }
     }
 }

@@ -11,12 +11,12 @@ let package = Package(
         .executable(name: "swsql", targets: ["swsql"])
     ],
     dependencies: [
-        // A fork of rensbreur/SwiftTUI that adds terminal mouse support (click to
-        // focus/activate, wheel to scroll) and `.onClick` for clickable-but-not-
-        // focusable views. Pinned to an exact commit so it cannot shift underfoot.
+        // A fork of rensbreur/SwiftTUI adding terminal mouse support, `.onClick`,
+        // and a multi-line `TextEditor`. Pinned to an exact commit so it cannot
+        // shift underfoot.
         .package(
             url: "https://github.com/vdsingh/SwiftTUI.git",
-            revision: "12479f67bd42e812308cdf458a46bd77bce3a4f6"
+            revision: "dd8014b059b5e1b9101257bdc5c6d289dee540ba"
         )
     ],
     targets: [
