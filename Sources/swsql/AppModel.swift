@@ -498,6 +498,17 @@ final class AppModel: ObservableObject {
         completionIndex = 0
     }
 
+    /// The Escape key, as a global "back": close the completion menu if it is
+    /// open, otherwise return from an auxiliary pane (structure, row detail,
+    /// history, connections, help) to the result grid.
+    func handleEscape() {
+        if hasCompletions {
+            dismissCompletions()
+        } else if pane != .data {
+            returnToData()
+        }
+    }
+
     private func rebuildVocabulary() {
         var items = Self.completionKeywords.map { CompletionItem(text: $0, detail: "keyword", kind: .keyword) }
         for object in objects {

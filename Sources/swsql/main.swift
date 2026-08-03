@@ -59,6 +59,9 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
         case "\u{06}": // Ctrl-F (also a Cmd-F remap): format
             model.formatQuery()
             return true
+        case "\u{1b}": // Escape: close the completion menu, or go back to the grid
+            model.handleEscape()
+            return true
         default:
             return false
         }

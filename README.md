@@ -126,6 +126,7 @@ from the keyboard or with the mouse.
 | `↑ ↓ ← →` | move between the prompt, the sidebar, result rows and the buttons |
 | `⏎` | run the statement in the prompt, open a table, inspect a row, press a button |
 | `⌫` | delete the last character typed |
+| `Esc` | go back to the result grid from any other pane (or close the autocomplete menu) |
 | `^C` / `^D` | quit |
 
 The buttons under the results do the rest: `⇟` `⇞` page through a large result,

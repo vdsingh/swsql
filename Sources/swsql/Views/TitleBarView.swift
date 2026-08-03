@@ -101,15 +101,15 @@ struct KeyHintsView: View {
     private var hints: String {
         switch model.pane {
         case .help:
-            return "↑↓←→ move   ⏎ activate   [Rows] returns to the grid   ^C quit"
+            return "↑↓←→ move   ⏎ activate   Esc back to the grid   ^C quit"
         case .rowDetail:
-            return "↑↓←→ move   [Rows] returns to the grid   ^C quit"
+            return "↑↓←→ move   Esc back to the grid   ^C quit"
         case .history:
-            return "↑↓ pick   ⏎ load into the editor   ^C quit"
+            return "↑↓ pick   ⏎ load into the editor   Esc back   ^C quit"
         case .connections:
-            return "↑↓ pick   ⏎ switch   [＋ Add] adds one   ^C quit"
+            return "↑↓ pick   ⏎ switch   [＋ Add] adds one   Esc back   ^C quit"
         case .structure:
-            return "↑↓←→ move   [Rows] returns to the grid   ^C quit"
+            return "↑↓←→ move   Esc back to the grid   ^C quit"
         case .data:
             return "⌃R run   ⏎ newline (editor) / open row   ↑↓←→ move   ^C quit"
         }
