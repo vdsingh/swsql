@@ -87,11 +87,18 @@ to pick out in `pg_stat_activity`.
 
 Run `swsql` with no arguments and nothing saved yet, and it opens on a setup
 screen that asks for a connection. Give it an optional **name** (`prod`,
-`staging`), a **URL** - a `postgres://` URI, a libpq keyword string, or a bare
-database name - and, if it is production, flip the **production** toggle. Press
-`⏎` in the URL field to connect. Only a connection that actually connected is
-saved. Pressing `⏎` on an empty URL falls back to libpq's environment defaults
-without saving anything.
+`staging`), the connection details, and, if it is production, flip the
+**production** toggle. Only a connection that actually connected is saved.
+
+The **② Connection** step takes the details either way you prefer:
+
+- **URL** - a `postgres://` URI, a libpq keyword string, or a bare database
+  name. Press `⏎` in the box to connect. Pressing `⏎` on an empty URL falls back
+  to libpq's environment defaults without saving anything.
+- **fields** - the individual pieces (host, port, user, password, database) for
+  when you would rather not assemble a connection string. Fill in what you know,
+  leave the rest blank to take libpq's defaults, then press **connect ▶**. The
+  password is masked once entered and never shown in full afterwards.
 
 ### Multiple connections
 

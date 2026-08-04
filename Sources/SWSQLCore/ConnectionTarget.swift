@@ -116,6 +116,35 @@ public struct ConnectionTarget: Equatable {
         return gaveConnectionInfo ? .connect(target) : .connectUsingDefaults(target)
     }
 
+    /// Builds a libpq keyword connection string from the individual connection
+    /// fields, for the setup screen's "enter the parts" path.
+    ///
+    /// Blank fields are dropped so libpq falls back to its own defaults for them,
+    /// exactly as the discrete command-line options do; each value is quoted and
+    /// escaped the libpq way. Deliberately omits `application_name`: the result is
+    /// re-parsed on its way to a target, which tags it there, so a saved
+    /// connection reads the same however it was entered.
+    public static func keywordString(
+        host: String = "",
+        port: String = "",
+        user: String = "",
+        password: String = "",
+        database: String = ""
+    ) -> String {
+        var parts: [String] = []
+        func add(_ key: String, _ value: String) {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            parts.append(keyword(key, trimmed))
+        }
+        add("host", host)
+        add("port", port)
+        add("user", user)
+        add("password", password)
+        add("dbname", database)
+        return parts.joined(separator: " ")
+    }
+
     /// A URI, or a keyword string that already contains an `=`.
     static func isConnectionString(_ value: String) -> Bool {
         value.hasPrefix("postgres://")

@@ -38,7 +38,7 @@ struct ConnectionsPaneView: View {
     private func row(for connection: SavedConnection) -> String {
         let tag = connection.isProduction ? "  ⚠ PRODUCTION" : ""
         let name = DisplayText.pad(connection.name, to: 18, alignment: .left)
-        let detail = DisplayText.singleLine(connection.connectionString)
+        let detail = DisplayText.singleLine(connection.displayString)
         let room = max(1, layout.mainWidth - 18 - tag.count - 6)
         return " \(marker(for: connection)) \(name)  \(DisplayText.truncate(detail, to: room))\(tag)"
     }

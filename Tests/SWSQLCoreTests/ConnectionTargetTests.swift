@@ -34,6 +34,37 @@ final class ConnectionTargetTests: XCTestCase {
         XCTAssertEqual(try connectionString(["shop"]), "dbname=shop application_name=swsql")
     }
 
+    // MARK: - keywordString (the setup screen's individual-fields path)
+
+    func testKeywordStringBuildsFromTheParts() {
+        XCTAssertEqual(
+            ConnectionTarget.keywordString(host: "db.internal", port: "5432", user: "alice", database: "shop"),
+            "host=db.internal port=5432 user=alice dbname=shop"
+        )
+    }
+
+    func testKeywordStringDropsBlankFieldsSoLibpqDefaultsApply() {
+        XCTAssertEqual(ConnectionTarget.keywordString(database: "shop"), "dbname=shop")
+        XCTAssertEqual(ConnectionTarget.keywordString(host: "  ", user: "\t"), "")
+        XCTAssertEqual(ConnectionTarget.keywordString(), "")
+    }
+
+    func testKeywordStringQuotesAndEscapesValues() {
+        XCTAssertEqual(
+            ConnectionTarget.keywordString(password: "p ass'word"),
+            "password='p ass\\'word'"
+        )
+    }
+
+    func testKeywordStringRoundTripsThroughParseAsAnExplicitConnection() throws {
+        let conninfo = ConnectionTarget.keywordString(host: "db", user: "alice", database: "shop")
+        guard case .connect(let target) = try ConnectionTarget.parse(arguments: [conninfo]) else {
+            return XCTFail("expected an explicit connection")
+        }
+        // Re-parsing tags it with the application name, exactly like a pasted URL.
+        XCTAssertEqual(target.connectionString, "host=db user=alice dbname=shop application_name=swsql")
+    }
+
     func testURIIsPassedThroughWithTheApplicationNameAppended() throws {
         XCTAssertEqual(
             try connectionString(["postgres://alice@db.internal/shop"]),

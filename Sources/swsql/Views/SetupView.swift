@@ -14,6 +14,8 @@ struct SetupView: View {
     private var inputBackground: Color { Color.xterm(white: 3) }
     private var nameFieldWidth: Int { max(16, min(48, layout.width - 12)) }
     private var urlFieldWidth: Int { max(24, layout.width - 10) }
+    /// The discrete fields sit under a label column, so they get a little less room.
+    private var partFieldWidth: Int { max(16, min(40, layout.width - 24)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -40,11 +42,36 @@ struct SetupView: View {
             stepLabel(number: "①", title: "Name", badge: "optional", badgeColor: Theme.dim)
             nameField
             blank
-            stepLabel(number: "②", title: "Connection URL", badge: "● required - press ⏎ here to connect", badgeColor: Theme.accent)
-            urlField
+            connectionStep
             blank
             stepLabel(number: "③", title: "Environment", badge: "", badgeColor: Theme.dim)
             environmentToggle
+        }
+    }
+
+    /// Step ②: choose how to give the connection - a whole URL, or the individual
+    /// fields - then show whichever input that choice calls for.
+    private var connectionStep: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 1) {
+                Text("  ②").foregroundColor(Theme.accent).bold()
+                Text("Connection").foregroundColor(Theme.strong).bold()
+                Text("  ").foregroundColor(Theme.dim)
+                Button(" URL ", action: { model.useURLInput() })
+                    .foregroundColor(model.draftInput == .url ? Theme.accent : Theme.dim)
+                    .bold()
+                Text("/").foregroundColor(Theme.dim)
+                Button(" fields ", action: { model.useFieldsInput() })
+                    .foregroundColor(model.draftInput == .fields ? Theme.accent : Theme.dim)
+                    .bold()
+                Text(model.draftInput == .url ? "  press ⏎ in the box to connect" : "  fill in what you know, then connect")
+                    .foregroundColor(Theme.dim)
+            }
+            if model.draftInput == .url {
+                urlField
+            } else {
+                fieldsForm
+            }
         }
     }
 
@@ -93,6 +120,68 @@ struct SetupView: View {
         }
     }
 
+    /// The individual-fields form: host, port, user, password, database, then a
+    /// button that assembles them and connects. Each field commits on ⏎ (mirroring
+    /// the name field) so nothing depends on the order they are filled in.
+    private var fieldsForm: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            partField(label: "host", placeholder: "localhost", value: model.draftHost,
+                      set: model.setDraftHost, clear: model.clearDraftHost)
+            partField(label: "port", placeholder: "5432", value: model.draftPort,
+                      set: model.setDraftPort, clear: model.clearDraftPort)
+            partField(label: "user", placeholder: "your role", value: model.draftUser,
+                      set: model.setDraftUser, clear: model.clearDraftUser)
+            partField(label: "password", placeholder: "leave blank to be prompted / use ~/.pgpass",
+                      value: model.draftPassword, display: String(repeating: "•", count: model.draftPassword.count),
+                      set: model.setDraftPassword, clear: model.clearDraftPassword)
+            partField(label: "database", placeholder: "dbname", value: model.draftDatabase,
+                      set: model.setDraftDatabase, clear: model.clearDraftDatabase)
+            connectButton
+        }
+    }
+
+    /// One labelled field. Empty, it shows an input; filled, it shows the stored
+    /// value (masked for the password) with a `change` link, just like the name
+    /// field. `display` overrides what the filled state shows.
+    @ViewBuilder
+    private func partField(
+        label: String,
+        placeholder: String,
+        value: String,
+        display: String? = nil,
+        set: @escaping (String) -> Void,
+        clear: @escaping () -> Void
+    ) -> some View {
+        if value.isEmpty {
+            HStack(spacing: 0) {
+                Text("    ▎ ").foregroundColor(Theme.accent)
+                Text(DisplayText.pad(label, to: 9, alignment: .left)).foregroundColor(Theme.dim)
+                TextField(placeholder: placeholder) { set($0) }
+                    .frame(width: Extended(partFieldWidth))
+                    .background(inputBackground)
+            }
+        } else {
+            HStack(spacing: 1) {
+                Text("    ▎ ").foregroundColor(Theme.accent)
+                Text(DisplayText.pad(label, to: 8, alignment: .left)).foregroundColor(Theme.dim)
+                Text(DisplayText.pad(" \(display ?? value) ", to: partFieldWidth, alignment: .left))
+                    .foregroundColor(Theme.strong)
+                    .background(inputBackground)
+                Button("change", action: clear).foregroundColor(Theme.dim)
+            }
+        }
+    }
+
+    private var connectButton: some View {
+        HStack(spacing: 1) {
+            Text("    ")
+            Button(" ● connect ▶ ", action: { model.addConnectionFromFields() })
+                .foregroundColor(Theme.accent)
+                .bold()
+                .background(inputBackground)
+        }
+    }
+
     private var environmentToggle: some View {
         HStack(spacing: 1) {
             Text("      ")
@@ -134,7 +223,7 @@ struct SetupView: View {
         "Examples:  postgres://user@host/db  ·  postgresql://alice@db/shop?sslmode=require  ·  host=db dbname=shop  ·  mydb"
     }
     private var hintText: String {
-        "⏎ in the URL box connects  ·  an empty URL uses your PG* environment  ·  ^C quit"
+        "URL / fields chooses how to enter details  ·  an empty URL uses your PG* environment  ·  ^C quit"
     }
     private var examplesLines: [String] { DisplayText.wrap(examplesText, to: max(1, layout.width - 2)) }
     private var hintLines: [String] { DisplayText.wrap(hintText, to: max(1, layout.width - 2)) }
@@ -143,10 +232,17 @@ struct SetupView: View {
         Text(String(repeating: " ", count: max(1, layout.width)))
     }
 
-    /// title(1) + blank(1) + rule(1) + blank(1) + steps(8) + filler + examples +
+    /// Lines the form occupies: name label + field + blank (3), the connection
+    /// step's own label (1) plus its input - one URL box, or five fields and a
+    /// connect button (6) - then a blank and the two environment lines (3).
+    private var stepsLineCount: Int {
+        model.draftInput == .url ? 8 : 13
+    }
+
+    /// title(1) + blank(1) + rule(1) + blank(1) + steps + filler + examples +
     /// status(1) + hint == layout.height, with examples and hint each wrapping to
     /// however many lines they need.
     private var fillerHeight: Int {
-        max(0, layout.height - 13 - examplesLines.count - hintLines.count)
+        max(0, layout.height - 5 - stepsLineCount - examplesLines.count - hintLines.count)
     }
 }

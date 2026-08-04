@@ -178,10 +178,30 @@ final class AppModel: ObservableObject {
     /// environment-defaults or command-line connection. Drives the prod banner.
     @Published private(set) var activeConnection: SavedConnection?
 
+    /// Which way the setup screen is taking connection details: a single URL box,
+    /// or the individual fields (host, port, …) for people who would rather not
+    /// assemble a connection string themselves.
+    enum SetupInput: Equatable {
+        case url
+        case fields
+    }
+
     /// The name and production flag being entered on the setup screen. The URL
     /// field commits them; these hold the parts the single-line fields cannot show.
     @Published private(set) var draftName: String = ""
     @Published private(set) var draftIsProduction = false
+
+    /// Whether the setup screen is asking for a URL or the individual fields.
+    @Published private(set) var draftInput: SetupInput = .url
+
+    /// The individual connection fields, entered when `draftInput` is `.fields`.
+    /// Each is optional: a blank one is left out of the connection string so libpq
+    /// falls back to its own default, the same as omitting a command-line flag.
+    @Published private(set) var draftHost: String = ""
+    @Published private(set) var draftPort: String = ""
+    @Published private(set) var draftUser: String = ""
+    @Published private(set) var draftPassword: String = ""
+    @Published private(set) var draftDatabase: String = ""
 
     /// The connection row the switcher is currently on, tracked as focus moves so
     /// the remove key knows which one "the highlighted connection" means. Only
@@ -217,6 +237,47 @@ final class AppModel: ObservableObject {
         setStatus(isProduction ? "this connection will be marked as production" : "marked as non-production", kind: .info)
     }
 
+    /// Switches the setup screen to the URL box, keeping any fields already typed
+    /// so toggling back and forth never loses input.
+    func useURLInput() {
+        guard draftInput != .url else { return }
+        draftInput = .url
+        setStatus("enter a connection URL", kind: .info)
+    }
+
+    /// Switches the setup screen to the individual fields.
+    func useFieldsInput() {
+        guard draftInput != .fields else { return }
+        draftInput = .fields
+        setStatus("fill in the fields, then press connect", kind: .info)
+    }
+
+    func setDraftHost(_ text: String) { draftHost = trimmedField(text); reportField("host", draftHost) }
+    func setDraftPort(_ text: String) { draftPort = trimmedField(text); reportField("port", draftPort) }
+    func setDraftUser(_ text: String) { draftUser = trimmedField(text); reportField("user", draftUser) }
+    func setDraftDatabase(_ text: String) { draftDatabase = trimmedField(text); reportField("database", draftDatabase) }
+
+    /// The password is stored verbatim (never echoed in the status line) so a value
+    /// with intentional spaces survives, and so it is not read back out loud.
+    func setDraftPassword(_ text: String) {
+        draftPassword = text
+        if !draftPassword.isEmpty { setStatus("password set", kind: .info) }
+    }
+
+    func clearDraftHost() { draftHost = ""; setStatus("type a host and press ⏎", kind: .info) }
+    func clearDraftPort() { draftPort = ""; setStatus("type a port and press ⏎", kind: .info) }
+    func clearDraftUser() { draftUser = ""; setStatus("type a user and press ⏎", kind: .info) }
+    func clearDraftPassword() { draftPassword = ""; setStatus("type a password and press ⏎", kind: .info) }
+    func clearDraftDatabase() { draftDatabase = ""; setStatus("type a database and press ⏎", kind: .info) }
+
+    private func trimmedField(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func reportField(_ label: String, _ value: String) {
+        if !value.isEmpty { setStatus("\(label) set to \"\(value)\"", kind: .info) }
+    }
+
     /// Adds the connection described on the setup screen and connects to it. It is
     /// saved only once it actually connects, so a typo is never persisted.
     func addConnection(url input: String) {
@@ -227,6 +288,25 @@ final class AppModel: ObservableObject {
         }
         guard Self.target(for: connectionString) != nil else {
             setStatus("that does not look like a connection URL", kind: .failure)
+            return
+        }
+        let name = draftName.isEmpty ? SavedConnection.defaultName(for: connectionString) : draftName
+        attempt(SavedConnection(name: name, connectionString: connectionString, isProduction: draftIsProduction))
+    }
+
+    /// Adds the connection described by the individual setup fields and connects
+    /// to it. Assembles a libpq keyword string from the parts, then follows the
+    /// same path as a URL, so it is likewise saved only once it actually connects.
+    func addConnectionFromFields() {
+        let connectionString = ConnectionTarget.keywordString(
+            host: draftHost,
+            port: draftPort,
+            user: draftUser,
+            password: draftPassword,
+            database: draftDatabase
+        )
+        guard !connectionString.isEmpty else {
+            setStatus("fill in at least one field, e.g. a host or database name", kind: .failure)
             return
         }
         let name = draftName.isEmpty ? SavedConnection.defaultName(for: connectionString) : draftName
@@ -359,6 +439,12 @@ final class AppModel: ObservableObject {
     private func clearDraft() {
         draftName = ""
         draftIsProduction = false
+        draftInput = .url
+        draftHost = ""
+        draftPort = ""
+        draftUser = ""
+        draftPassword = ""
+        draftDatabase = ""
     }
 
     /// Clears just the name so its field reappears for re-entry (the `change` link

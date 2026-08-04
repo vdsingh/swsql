@@ -27,6 +27,37 @@ final class SavedConnectionTests: XCTestCase {
         XCTAssertEqual(SavedConnection.defaultName(for: ""), "connection")
     }
 
+    // MARK: - displayString (password redaction for the switcher list)
+
+    private func redacted(_ connectionString: String) -> String {
+        SavedConnection(name: "c", connectionString: connectionString).displayString
+    }
+
+    func testDisplayStringMasksAKeywordPassword() {
+        XCTAssertEqual(redacted("host=db password=secret dbname=shop"), "host=db password=•••• dbname=shop")
+        XCTAssertEqual(redacted("password=secret"), "password=••••")
+    }
+
+    func testDisplayStringMasksAQuotedKeywordPassword() {
+        XCTAssertEqual(redacted("host=db password='se cret' dbname=shop"), "host=db password=•••• dbname=shop")
+        XCTAssertEqual(redacted("password='a\\'b' dbname=shop"), "password=•••• dbname=shop")
+    }
+
+    func testDisplayStringMasksAURIPassword() {
+        XCTAssertEqual(redacted("postgres://alice:secret@db.internal/shop"), "postgres://alice:••••@db.internal/shop")
+    }
+
+    func testDisplayStringLeavesConnectionsWithoutAPasswordUntouched() {
+        XCTAssertEqual(redacted("host=db user=alice dbname=shop"), "host=db user=alice dbname=shop")
+        XCTAssertEqual(redacted("postgres://alice@db.internal/shop"), "postgres://alice@db.internal/shop")
+    }
+
+    func testDisplayStringDoesNotMistakeASimilarKeywordForThePassword() {
+        // A ':' in the path, and an sslpassword key, must not be treated as the password.
+        XCTAssertEqual(redacted("postgres://db.internal/shop?options=-c%20a:b"), "postgres://db.internal/shop?options=-c%20a:b")
+        XCTAssertEqual(redacted("host=db sslpassword=x dbname=shop"), "host=db sslpassword=x dbname=shop")
+    }
+
     // MARK: - ConnectionList
 
     private let staging = SavedConnection(name: "staging", connectionString: "postgres://db/stg")

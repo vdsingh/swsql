@@ -14,6 +14,71 @@ public struct SavedConnection: Codable, Equatable {
         self.isProduction = isProduction
     }
 
+    /// The connection string with any password obscured, for showing on screen -
+    /// the switcher list, status lines. This is display only and must never be
+    /// handed to libpq. Covers both the `password=…` keyword form this app writes
+    /// from the setup fields and a `scheme://user:password@host` URI a user pasted.
+    public var displayString: String {
+        Self.redactingPassword(in: connectionString)
+    }
+
+    static func redactingPassword(in value: String) -> String {
+        redactingKeywordPassword(in: redactingURIPassword(in: value))
+    }
+
+    /// Masks the password in a `scheme://user:password@host` URI, if present.
+    private static func redactingURIPassword(in value: String) -> String {
+        guard let scheme = value.range(of: "://") else { return value }
+        let authority = value[scheme.upperBound...]
+        guard let at = authority.firstIndex(of: "@") else { return value }
+        // The '@' must sit in the authority, not later in the path or query.
+        for terminator in ["/", "?", "#"] where (authority.firstIndex(of: Character(terminator)).map { $0 < at } ?? false) {
+            return value
+        }
+        guard let colon = authority[..<at].firstIndex(of: ":") else { return value }
+        var result = value
+        result.replaceSubrange(value.index(after: colon)..<at, with: "••••")
+        return result
+    }
+
+    /// Masks the value of a `password=…` keyword, honouring libpq single-quoting.
+    private static func redactingKeywordPassword(in value: String) -> String {
+        var searchStart = value.startIndex
+        while let key = value.range(of: "password=", range: searchStart..<value.endIndex) {
+            let atBoundary = key.lowerBound == value.startIndex
+                || value[value.index(before: key.lowerBound)].isWhitespace
+            if atBoundary {
+                var result = value
+                result.replaceSubrange(key.upperBound..<passwordValueEnd(in: value, from: key.upperBound), with: "••••")
+                return result
+            }
+            searchStart = key.upperBound
+        }
+        return value
+    }
+
+    /// Where a keyword password value ends: the matching close quote for a quoted
+    /// value (backslash escapes respected), otherwise the next whitespace.
+    private static func passwordValueEnd(in value: String, from start: String.Index) -> String.Index {
+        let end = value.endIndex
+        guard start < end else { return start }
+        if value[start] == "'" {
+            var index = value.index(after: start)
+            while index < end {
+                if value[index] == "\\", value.index(after: index) < end {
+                    index = value.index(index, offsetBy: 2)
+                    continue
+                }
+                if value[index] == "'" { return value.index(after: index) }
+                index = value.index(after: index)
+            }
+            return index
+        }
+        var index = start
+        while index < end, !value[index].isWhitespace { index = value.index(after: index) }
+        return index
+    }
+
     /// A readable label derived from a connection string, for when the user saved
     /// one without naming it (or for migrating the old single-connection file).
     /// Prefers the database name, then the host, then a plain fallback.
