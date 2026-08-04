@@ -3,6 +3,8 @@
 A PostgreSQL client for the terminal, written in Swift with
 [SwiftTUI](https://github.com/rensbreur/SwiftTUI).
 
+![swsql browsing a table, with the object list on the left and an aligned result grid on the right](docs/screenshot.png)
+
 ```
  swsql  alice@db.internal:5432/shop  ·  PostgreSQL 16.10                    ● ready
  sql> select id, email, balance, settings from users order by id limit 60
