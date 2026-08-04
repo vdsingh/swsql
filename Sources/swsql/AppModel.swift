@@ -183,6 +183,19 @@ final class AppModel: ObservableObject {
     @Published private(set) var draftName: String = ""
     @Published private(set) var draftIsProduction = false
 
+    /// The connection row the switcher is currently on, tracked as focus moves so
+    /// the remove key knows which one "the highlighted connection" means. Only
+    /// meaningful while the connections pane is open; reset whenever it closes.
+    @Published private(set) var focusedConnectionName: String?
+
+    /// A connection the user has asked to remove, held while we wait for a y/n
+    /// confirmation. Removing is irreversible and one of these may be production,
+    /// so it never happens on a single keystroke.
+    @Published private(set) var pendingRemovalName: String?
+
+    /// True while the switcher is waiting for the user to confirm a removal.
+    var isConfirmingRemoval: Bool { pendingRemovalName != nil }
+
     /// True while connected to a connection the user tagged as production.
     var isConnectedToProduction: Bool {
         guard case .connected = connectionState else { return false }
@@ -225,6 +238,72 @@ final class AppModel: ObservableObject {
         guard let connection = ConnectionList.first(named: name, in: connections) else { return }
         returnToData()
         attempt(connection)
+    }
+
+    /// Records that the switcher's focus moved onto a connection row, so the
+    /// remove key can act on it. Moving onto a different row abandons a
+    /// half-started removal, so a stray "y" can never delete the row you just
+    /// moved to instead of the one you meant.
+    func focusConnection(_ name: String) {
+        guard focusedConnectionName?.caseInsensitiveCompare(name) != .orderedSame else { return }
+        focusedConnectionName = name
+        cancelRemoval(silently: true)
+    }
+
+    /// Focus left the connection rows (onto the Add button), so nothing is
+    /// targeted for removal any more.
+    func clearConnectionFocus() {
+        focusedConnectionName = nil
+        cancelRemoval(silently: true)
+    }
+
+    /// Asks to remove the highlighted connection, entering the confirm step. A
+    /// no-op unless a row is actually highlighted in the switcher.
+    func requestRemoveFocusedConnection() {
+        guard pane == .connections else { return }
+        guard let name = focusedConnectionName,
+              let connection = ConnectionList.first(named: name, in: connections) else {
+            setStatus("highlight a connection with ↑↓ first, then press d to remove it", kind: .info)
+            return
+        }
+        pendingRemovalName = connection.name
+        let tag = connection.isProduction ? " (⚠ PRODUCTION)" : ""
+        setStatus("remove \"\(connection.name)\"\(tag)?  press y to confirm, n to keep it", kind: .failure)
+    }
+
+    /// Confirms the pending removal: drops it from the saved list and persists.
+    /// A live session on that connection is left untouched - removing only forgets
+    /// it for next time, it does not disconnect you.
+    func confirmRemoval() {
+        guard let name = pendingRemovalName else { return }
+        pendingRemovalName = nil
+        guard ConnectionList.first(named: name, in: connections) != nil else { return }
+        connections = ConnectionList.removing(name, from: connections)
+        if focusedConnectionName?.caseInsensitiveCompare(name) == .orderedSame {
+            focusedConnectionName = nil
+        }
+        do {
+            try store.save(connections)
+            setStatus("removed \"\(name)\" from saved connections", kind: .success)
+        } catch {
+            setStatus("removed \"\(name)\", but could not update the saved file: \(error.localizedDescription)", kind: .failure)
+        }
+    }
+
+    /// Abandons a pending removal. `silently` is for the incidental cancellations
+    /// (moving to another row, leaving the pane) that should not talk over the
+    /// last status message.
+    func cancelRemoval(silently: Bool = false) {
+        guard pendingRemovalName != nil else { return }
+        pendingRemovalName = nil
+        if !silently { setStatus("kept the connection", kind: .info) }
+    }
+
+    /// Clears the switcher's transient selection state. Called whenever the pane
+    /// opens or closes so a removal can never be left half-started across visits.
+    private func resetConnectionSelection() {
+        focusedConnectionName = nil
+        cancelRemoval(silently: true)
     }
 
     /// Connects the psql way, via libpq's own environment and defaults, without
@@ -502,7 +581,9 @@ final class AppModel: ObservableObject {
     /// open, otherwise return from an auxiliary pane (structure, row detail,
     /// history, connections, help) to the result grid.
     func handleEscape() {
-        if hasCompletions {
+        if isConfirmingRemoval {
+            cancelRemoval()
+        } else if hasCompletions {
             dismissCompletions()
         } else if pane != .data {
             returnToData()
@@ -638,10 +719,12 @@ final class AppModel: ObservableObject {
     }
 
     func toggleConnections() {
+        resetConnectionSelection()
         pane = pane == .connections ? .data : .connections
     }
 
     func returnToData() {
+        resetConnectionSelection()
         pane = .data
     }
 

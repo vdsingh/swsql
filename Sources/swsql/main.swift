@@ -52,6 +52,27 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
     // Ctrl-R runs the query from anywhere, not only while the editor has focus -
     // this is also what a terminal Cmd-R→^R remap triggers.
     application.keyHandler = { character in
+        // While the switcher waits to confirm a removal, y/⏎ confirms and n keeps
+        // it. Ordinary text is swallowed so a stray letter can't fall through to
+        // switching or the editor, but control keys (^C/^D to quit) still pass.
+        // Arrow keys arrive as escape sequences that never reach this handler, so
+        // navigating away cancels the removal on its own via focusConnection.
+        if model.isConfirmingRemoval {
+            switch character {
+            case "y", "Y", "\n", "\r":
+                model.confirmRemoval()
+                return true
+            case "n", "N":
+                model.cancelRemoval()
+                return true
+            case "\u{1b}": // Escape: cancel
+                model.handleEscape()
+                return true
+            default:
+                return character >= " "
+            }
+        }
+
         switch character {
         case "\u{12}": // Ctrl-R (also a Cmd-R / Cmd-Enter remap): run
             model.runCurrentQuery()
@@ -61,6 +82,12 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
             return true
         case "\u{1b}": // Escape: close the completion menu, or go back to the grid
             model.handleEscape()
+            return true
+        case "d", "D":
+            // Remove the highlighted connection - but only in the switcher, so d
+            // stays an ordinary character everywhere else (the editor).
+            guard model.pane == .connections else { return false }
+            model.requestRemoveFocusedConnection()
             return true
         default:
             return false

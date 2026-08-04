@@ -19,29 +19,48 @@ struct ConnectionsPaneView: View {
             ForEach(model.connections.indexed) { entry in
                 Button(
                     action: { model.connect(named: entry.value.name) },
+                    hover: { model.focusConnection(entry.value.name) },
                     label: {
                         Text(row(for: entry.value))
-                            .foregroundColor(entry.value.isProduction ? Theme.warning : Theme.text)
+                            .foregroundColor(color(for: entry.value))
                     }
                 )
             }
-            Button("  ＋ Add a connection", action: { model.beginAddConnection() })
+            Button("  ＋ Add a connection", hover: { model.clearConnectionFocus() }, action: { model.beginAddConnection() })
                 .foregroundColor(Theme.accent)
             emptyNotice
             Filler(height: fillerHeight, width: layout.mainWidth)
         }
     }
 
-    /// One connection as a single line: an active marker, the name, its target and
-    /// a production tag.
+    /// One connection as a single line: a marker (● active, ✗ pending removal),
+    /// the name, its target and a production tag.
     private func row(for connection: SavedConnection) -> String {
-        let active = model.activeConnection?.name.caseInsensitiveCompare(connection.name) == .orderedSame
-        let marker = active ? "●" : " "
         let tag = connection.isProduction ? "  ⚠ PRODUCTION" : ""
         let name = DisplayText.pad(connection.name, to: 18, alignment: .left)
         let detail = DisplayText.singleLine(connection.connectionString)
         let room = max(1, layout.mainWidth - 18 - tag.count - 6)
-        return " \(marker) \(name)  \(DisplayText.truncate(detail, to: room))\(tag)"
+        return " \(marker(for: connection)) \(name)  \(DisplayText.truncate(detail, to: room))\(tag)"
+    }
+
+    private func marker(for connection: SavedConnection) -> String {
+        if isPendingRemoval(connection) { return "✗" }
+        return isActive(connection) ? "●" : " "
+    }
+
+    /// The pending-removal row is drawn in the failure colour so the one about to
+    /// be deleted is unmistakable while the y/n prompt is up.
+    private func color(for connection: SavedConnection) -> Color {
+        if isPendingRemoval(connection) { return Theme.failure }
+        return connection.isProduction ? Theme.warning : Theme.text
+    }
+
+    private func isActive(_ connection: SavedConnection) -> Bool {
+        model.activeConnection?.name.caseInsensitiveCompare(connection.name) == .orderedSame
+    }
+
+    private func isPendingRemoval(_ connection: SavedConnection) -> Bool {
+        model.pendingRemovalName?.caseInsensitiveCompare(connection.name) == .orderedSame
     }
 
     @ViewBuilder

@@ -107,7 +107,9 @@ struct KeyHintsView: View {
         case .history:
             return "↑↓ pick   ⏎ load into the editor   Esc back   ^C quit"
         case .connections:
-            return "↑↓ pick   ⏎ switch   [＋ Add] adds one   Esc back   ^C quit"
+            return model.isConfirmingRemoval
+                ? "y remove   n keep   Esc cancel"
+                : "↑↓ pick   ⏎ switch   d remove   [＋ Add] adds one   Esc back   ^C quit"
         case .structure:
             return "↑↓←→ move   Esc back to the grid   ^C quit"
         case .data:

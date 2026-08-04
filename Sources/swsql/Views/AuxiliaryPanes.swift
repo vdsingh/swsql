@@ -135,7 +135,8 @@ struct HelpPaneView: View {
         ("◀ ▶", "scroll the grid one column at a time"),
         ("⇞ ⇟", "previous and next page of a large result"),
         ("Struct", "column types, defaults and keys for the selected table"),
-        ("Hist", "re-run an earlier statement")
+        ("Hist", "re-run an earlier statement"),
+        ("d", "in the connection switcher, remove the highlighted connection")
     ]
 
     var body: some View {
