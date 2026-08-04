@@ -61,17 +61,23 @@ struct GridView: View {
         )
     }
 
+    // The gutter and separators belong to the row button, so clicking the row
+    // number opens the detail pane; every value cell is its own click target,
+    // so clicking (or double-clicking) one highlights just that cell for ⌃Y /
+    // ⌘C to copy.
     private func rowView(at index: Int, grid: GridLayout) -> some View {
         Button(
             action: { model.openRowDetail(row: index) },
             hover: { model.focusRow(index) },
             label: {
-                SpanLine(
+                GridRowLine(
                     spans: GridRenderer.rowSpans(
                         row: result.rows[index],
                         number: index + 1,
                         layout: grid
-                    )
+                    ),
+                    selectedColumn: model.selectedCell?.row == index ? model.selectedCell?.column : nil,
+                    onCellClick: { column in model.selectCell(row: index, column: column) }
                 )
             }
         )
@@ -94,6 +100,36 @@ struct SpanLine: View {
         HStack(spacing: 0) {
             ForEach(spans) { span in
                 Text(span.text).foregroundColor(Theme.color(for: span.role))
+            }
+        }
+    }
+}
+
+/// One grid row: the chrome spans as plain text, each value cell as its own
+/// click target, and the highlighted cell drawn on the selection background.
+struct GridRowLine: View {
+    let spans: [TextSpan]
+    /// The `sourceColumn` highlighted in this row, if the highlight is here.
+    let selectedColumn: Int?
+    let onCellClick: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(spans) { span in
+                if let column = span.sourceColumn {
+                    if column == selectedColumn {
+                        Text(span.text)
+                            .foregroundColor(Theme.selectionForeground)
+                            .background(Theme.selectionBackground)
+                            .onClick { onCellClick(column) }
+                    } else {
+                        Text(span.text)
+                            .foregroundColor(Theme.color(for: span.role))
+                            .onClick { onCellClick(column) }
+                    }
+                } else {
+                    Text(span.text).foregroundColor(Theme.color(for: span.role))
+                }
             }
         }
     }

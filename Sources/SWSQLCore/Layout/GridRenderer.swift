@@ -19,11 +19,16 @@ public struct TextSpan: Equatable, Identifiable {
     public var id: Int
     public var text: String
     public var role: Role
+    /// The index into the result's columns of the value this span renders, so
+    /// the view layer can make each cell its own mouse target. Nil for the
+    /// chrome (gutter, separators, rules) that belongs to no column.
+    public var sourceColumn: Int?
 
-    public init(id: Int, text: String, role: Role) {
+    public init(id: Int, text: String, role: Role, sourceColumn: Int? = nil) {
         self.id = id
         self.text = text
         self.role = role
+        self.sourceColumn = sourceColumn
     }
 }
 
@@ -102,7 +107,8 @@ public enum GridRenderer {
                 TextSpan(
                     id: spans.count,
                     text: DisplayText.cellText(value, width: column.width, alignment: column.alignment),
-                    role: role
+                    role: role,
+                    sourceColumn: column.sourceIndex
                 )
             )
         }

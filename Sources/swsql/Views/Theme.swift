@@ -19,6 +19,11 @@ enum Theme {
     static let null = Color.brightBlack
     static let separator = Color.brightBlack
 
+    /// The cell highlighted for copying: a solid block of the accent colour, so
+    /// it reads as a selection rather than as more coloured text.
+    static let selectionBackground = Color.cyan
+    static let selectionForeground = Color.black
+
     static func color(for role: TextSpan.Role) -> Color {
         switch role {
         case .header: return accent

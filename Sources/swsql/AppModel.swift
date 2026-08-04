@@ -80,6 +80,16 @@ final class AppModel: ObservableObject {
     /// highlight changed, which is the only visible difference.
     private(set) var focusedRow = 0
 
+    /// A cell of the result, addressed absolutely (row index and the column's
+    /// `sourceIndex`) so paging and column scrolling never move it off target.
+    struct CellAddress: Equatable {
+        var row: Int
+        var column: Int
+    }
+
+    /// The cell highlighted for copying, or nil when nothing is highlighted.
+    @Published private(set) var selectedCell: CellAddress?
+
 
     /// Objects built into the sidebar at once. Beyond this the filter is the way
     /// to find something, rather than a control per relation in a large schema.
@@ -665,7 +675,8 @@ final class AppModel: ObservableObject {
 
     /// The Escape key, as a global "back": close the completion menu if it is
     /// open, otherwise return from an auxiliary pane (structure, row detail,
-    /// history, connections, help) to the result grid.
+    /// history, connections, help) to the result grid, otherwise clear the
+    /// highlighted cell.
     func handleEscape() {
         if isConfirmingRemoval {
             cancelRemoval()
@@ -673,6 +684,8 @@ final class AppModel: ObservableObject {
             dismissCompletions()
         } else if pane != .data {
             returnToData()
+        } else if selectedCell != nil {
+            clearCellSelection()
         }
     }
 
@@ -742,6 +755,7 @@ final class AppModel: ObservableObject {
         pageStart = 0
         columnOffset = 0
         focusedRow = 0
+        selectedCell = nil
         pane = .data
         dismissCompletions()
         setStatus("running…", kind: .info)
@@ -847,6 +861,44 @@ final class AppModel: ObservableObject {
     func focusRow(_ index: Int) {
         guard index < rowCount else { return }
         focusedRow = index
+    }
+
+    // MARK: - Cell selection
+
+    /// Highlights a cell the mouse clicked, so ⌃Y (or a terminal ⌘C remap) can
+    /// copy its full value - the underlying text, not the truncated display.
+    func selectCell(row: Int, column: Int) {
+        guard let result, row < result.rows.count, column < result.columns.count else { return }
+        focusedRow = row
+        let cell = CellAddress(row: row, column: column)
+        guard selectedCell != cell else { return }
+        selectedCell = cell
+        setStatus("highlighted \(result.columns[column].name) · row \(row + 1)  -  ⌃Y (or a ⌘C remap) copies, esc clears", kind: .info)
+    }
+
+    func clearCellSelection() {
+        guard selectedCell != nil else { return }
+        selectedCell = nil
+    }
+
+    /// Copies the highlighted cell's raw value to the system clipboard.
+    func copySelectedCell() {
+        guard let cell = selectedCell, let result,
+              cell.row < result.rows.count, cell.column < result.columns.count else {
+            setStatus("click a cell to highlight it first, then ⌃Y (or a ⌘C remap) copies it", kind: .info)
+            return
+        }
+        let column = result.columns[cell.column].name
+        guard let value = result.rows[cell.row][safe: cell.column] ?? nil else {
+            setStatus("\(column) · row \(cell.row + 1) is NULL - nothing to copy", kind: .info)
+            return
+        }
+        if let failure = Clipboard.copy(value) {
+            setStatus(failure, kind: .failure)
+        } else {
+            let length = "\(value.count) \(value.count == 1 ? "character" : "characters")"
+            setStatus("copied \(column) · row \(cell.row + 1) (\(length))", kind: .success)
+        }
     }
 
     /// Moves the page window to start at `row`, clamped so the last page is still full.

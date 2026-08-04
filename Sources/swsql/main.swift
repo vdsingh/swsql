@@ -33,6 +33,38 @@ func fail(_ message: String) -> Never {
     exit(2)
 }
 
+#if canImport(Darwin)
+/// What the terminal's delayed-suspend character was before swsql disabled it,
+/// so the atexit handler can put it back for the shell.
+var originalDelayedSuspend: UInt8 = 0x19
+
+/// BSD terminals reserve ⌃Y as the "delayed suspend" character: with ISIG on,
+/// reading it stops the process instead of delivering the byte - and the input
+/// loop's pending read then dies on an empty non-blocking file descriptor. ⌃Y
+/// is swsql's copy key, so hand the byte back to the application. Must run
+/// before `Application.start()`, whose raw-mode setup leaves `c_cc` alone.
+func claimCtrlYFromTheTerminal() {
+    var attributes = termios()
+    guard tcgetattr(STDIN_FILENO, &attributes) == 0 else { return }
+    withUnsafeMutableBytes(of: &attributes.c_cc) { characters in
+        originalDelayedSuspend = characters[Int(VDSUSP)]
+        characters[Int(VDSUSP)] = 0xff // _POSIX_VDISABLE
+    }
+    guard tcsetattr(STDIN_FILENO, TCSANOW, &attributes) == 0 else { return }
+    atexit {
+        var attributes = termios()
+        guard tcgetattr(STDIN_FILENO, &attributes) == 0 else { return }
+        withUnsafeMutableBytes(of: &attributes.c_cc) { characters in
+            characters[Int(VDSUSP)] = originalDelayedSuspend
+        }
+        tcsetattr(STDIN_FILENO, TCSANOW, &attributes)
+    }
+}
+#else
+/// Linux has no delayed-suspend character, so ⌃Y already arrives as input.
+func claimCtrlYFromTheTerminal() {}
+#endif
+
 /// Builds the model with its starting point and runs the UI.
 func launch(initial: AppModel.Initial, connections: [SavedConnection], environmentDefaults: ConnectionTarget) {
     let model = AppModel(
@@ -80,6 +112,9 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
         case "\u{06}": // Ctrl-F (also a Cmd-F remap): format
             model.formatQuery()
             return true
+        case "\u{19}": // Ctrl-Y (also a Cmd-C remap): copy the highlighted cell
+            model.copySelectedCell()
+            return true
         case "\u{1b}": // Escape: close the completion menu, or go back to the grid
             model.handleEscape()
             return true
@@ -93,6 +128,7 @@ func launch(initial: AppModel.Initial, connections: [SavedConnection], environme
             return false
         }
     }
+    claimCtrlYFromTheTerminal()
     application.start()
 }
 

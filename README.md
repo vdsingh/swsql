@@ -33,6 +33,9 @@ A PostgreSQL client for the terminal, written in Swift with
   table apart.
 - **Inspect** a single row vertically, which is the only readable way to look at
   a wide record.
+- **Copy** any cell: click it to highlight it, then `^Y` (or a `⌘C` remap) puts
+  the full underlying value on the system clipboard - the whole JSON blob, not
+  the truncated text on screen.
 - **See structure**: column types, primary keys, nullability and defaults.
 - **Cancel** a statement that is taking too long. The interface stays responsive
   while a query runs, and the cancel request goes to the server the same way
@@ -135,7 +138,8 @@ from the keyboard or with the mouse.
 | `↑ ↓ ← →` | move between the prompt, the sidebar, result rows and the buttons |
 | `⏎` | run the statement in the prompt, open a table, inspect a row, press a button |
 | `⌫` | delete the last character typed |
-| `Esc` | go back to the result grid from any other pane (or close the autocomplete menu) |
+| `^Y` | copy the highlighted cell to the system clipboard (remap `⌘C` to send it, see below) |
+| `Esc` | go back to the result grid from any other pane (or close the autocomplete menu, or clear the highlighted cell) |
 | `^C` / `^D` | quit |
 
 The buttons under the results do the rest: `⇟` `⇞` page through a large result,
@@ -188,9 +192,19 @@ terminal, not on swsql:
 Example for **WezTerm + tmux** (`~/.wezterm.lua`):
 
 ```lua
-local act = require('wezterm').action
+local wezterm = require('wezterm')
+local act = wezterm.action
 return {
   keys = {
+    -- ⌘C: copy the terminal selection when there is one, otherwise send ^Y so
+    -- swsql copies its highlighted cell. Copying stays intact everywhere else.
+    { key = 'c', mods = 'CMD', action = wezterm.action_callback(function(window, pane)
+        if window:get_selection_text_for_pane(pane) ~= '' then
+          window:perform_action(act.CopyTo('ClipboardAndPrimarySelection'), pane)
+        else
+          window:perform_action(act.SendString('\x19'), pane)
+        end
+      end) },
     { key = 'r',          mods = 'CMD', action = act.SendString('\x12')     }, -- ⌘R  → run
     { key = 'LeftArrow',  mods = 'CMD', action = act.SendString('\x1b[H')   }, -- ⌘←  → line start
     { key = 'RightArrow', mods = 'CMD', action = act.SendString('\x1b[F')   }, -- ⌘→  → line end
@@ -212,9 +226,19 @@ set -s extended-keys on
 
 ## Mouse
 
-Click a table, a result row or any button to focus and activate it; click a text
-field to type into it. The scroll wheel moves the focus up and down, which is how
-you scroll the sidebar or the result grid.
+Click a table, a row's number or any button to focus and activate it; click a
+text field to type into it. The scroll wheel moves the focus up and down, which
+is how you scroll the sidebar or the result grid.
+
+In the result grid every value is its own click target: click (or double-click)
+a cell to highlight it, then `^Y` - or `⌘C` with the remap above - copies its
+full value to the system clipboard, untruncated, exactly as the server sent it.
+`Esc` clears the highlight. Clicking the row number at the left edge still
+opens the row inspector, as does `⏎` on a focused row.
+
+Copying goes through `pbcopy` / `wl-copy` / `xclip` when one is available, and
+falls back to the OSC 52 escape sequence, which reaches your local clipboard
+even over SSH in terminals that support it.
 
 Mouse reporting is on whenever swsql is running, so selecting text to copy it
 works the way it does in any terminal program that tracks the mouse: hold `⌥` or

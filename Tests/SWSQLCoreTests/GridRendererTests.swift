@@ -51,6 +51,29 @@ final class GridRendererTests: XCTestCase {
         XCTAssertEqual(Set(spans.map(\.id)).count, spans.count)
     }
 
+    func testValueSpansCarryTheirSourceColumnAndChromeDoesNot() {
+        let layout = makeLayout()
+        let spans = GridRenderer.rowSpans(row: rows[0], number: 1, layout: layout)
+
+        XCTAssertEqual(spans.compactMap(\.sourceColumn), [0, 1], "each cell points at its result column")
+        for span in spans where span.sourceColumn == nil {
+            XCTAssertTrue([.gutter, .separator].contains(span.role), "only chrome may lack a source column")
+        }
+    }
+
+    func testScrolledColumnsKeepTheirAbsoluteSourceIndex() {
+        let layout = GridLayout.make(
+            columns: columns,
+            rows: rows,
+            availableWidth: 60,
+            firstColumn: 1,
+            highestRowNumber: 2
+        )
+        let spans = GridRenderer.rowSpans(row: rows[0], number: 1, layout: layout)
+
+        XCTAssertEqual(spans.compactMap(\.sourceColumn), [1], "the highlight must survive column scrolling")
+    }
+
     func testShortRowsDoNotCrashTheRenderer() {
         let layout = makeLayout()
         let spans = GridRenderer.rowSpans(row: ["only one value"], number: 1, layout: layout)
