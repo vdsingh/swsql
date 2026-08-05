@@ -196,11 +196,15 @@ local wezterm = require('wezterm')
 local act = wezterm.action
 return {
   keys = {
-    -- ⌘C: copy the terminal selection when there is one, otherwise send ^Y so
+    -- ⌘C: copy the terminal selection when there is one (then clear it, so a
+    -- stale selection never shadows the other branch), otherwise send ^Y so
     -- swsql copies its highlighted cell. Copying stays intact everywhere else.
     { key = 'c', mods = 'CMD', action = wezterm.action_callback(function(window, pane)
         if window:get_selection_text_for_pane(pane) ~= '' then
-          window:perform_action(act.CopyTo('ClipboardAndPrimarySelection'), pane)
+          window:perform_action(act.Multiple {
+            act.CopyTo('ClipboardAndPrimarySelection'),
+            act.ClearSelection,
+          }, pane)
         else
           window:perform_action(act.SendString('\x19'), pane)
         end
