@@ -12,11 +12,11 @@ let package = Package(
     ],
     dependencies: [
         // A fork of rensbreur/SwiftTUI adding terminal mouse support, `.onClick`,
-        // and a multi-line `TextEditor`. Pinned to an exact commit so it cannot
-        // shift underfoot.
+        // `.onHorizontalScroll` and a multi-line `TextEditor`. Pinned to an
+        // exact commit so it cannot shift underfoot.
         .package(
             url: "https://github.com/vdsingh/SwiftTUI.git",
-            revision: "071b45209e01147af4e646a598fee4ecbce9c539"
+            revision: "74ec866297bf4ece6ecf255c9807406630eff83e"
         )
     ],
     targets: [

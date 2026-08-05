@@ -232,7 +232,9 @@ set -s extended-keys on
 
 Click a table, a row's number or any button to focus and activate it; click a
 text field to type into it. The scroll wheel moves the focus up and down, which
-is how you scroll the sidebar or the result grid.
+is how you scroll the sidebar or the result grid. Scrolling sideways with the
+pointer over the grid moves through the columns, the same step the `◀` `▶`
+buttons take.
 
 In the result grid every value is its own click target: click (or double-click)
 a cell to highlight it, then `^Y` - or `⌘C` with the remap above - copies its

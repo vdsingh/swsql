@@ -36,6 +36,8 @@ struct GridView: View {
         let grid = gridLayout
         let rows = model.pageRange
 
+        // Sideways wheel movement over the grid pages through the columns, the
+        // same step the ◀ ▶ buttons take.
         return VStack(alignment: .leading, spacing: 0) {
             SpanLine(spans: GridRenderer.headerSpans(layout: grid))
             SpanLine(spans: GridRenderer.ruleSpans(layout: grid))
@@ -49,6 +51,7 @@ struct GridView: View {
             }
             .frame(width: Extended(layout.mainWidth), height: Extended(layout.gridRowCapacity))
         }
+        .onHorizontalScroll { delta in model.scrollColumns(by: delta) }
     }
 
     private var gridLayout: GridLayout {
