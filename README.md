@@ -137,7 +137,7 @@ from the keyboard or with the mouse.
 | --- | --- |
 | `↑ ↓ ← →` | move between the prompt, the sidebar, result rows and the buttons |
 | `⏎` | run the statement in the prompt, open a table, inspect a row, press a button |
-| `⌫` | delete the last character typed |
+| `⌫` | delete the character before the cursor |
 | `^Y` | copy the highlighted cell to the system clipboard (remap `⌘C` to send it, see below) |
 | `Esc` | go back to the result grid from any other pane (or close the autocomplete menu, or clear the highlighted cell) |
 | `^C` / `^D` | quit |
@@ -147,7 +147,9 @@ The buttons under the results do the rest: `⇟` `⇞` page through a large resu
 columns, `Hist` lists earlier statements, `Conn` switches between saved
 connections, `?` opens help, and `Rows` returns to the grid from any other pane.
 
-The object filter is a single-line field: type, then press `⏎`.
+The object filter is a single-line field: type, then press `⏎`. It edits like
+any other text field - see the movement and deletion keys below, which work in
+every field in the app.
 
 ## Editing SQL
 
@@ -161,6 +163,8 @@ The SQL input is a multi-line editor.
 | `⌘ ↑` / `⌘ ↓` | jump to the start / end of the whole query |
 | `⏎` | insert a new line |
 | `⌫` | delete a character; `⌥ ⌫` deletes the previous word |
+| `⌘ ⌫` | delete to the start of the line (`^U` too) |
+| `fn ⌫` | forward-delete the character under the cursor |
 | `^R` | run the query (from anywhere) |
 
 - **`^R`**, or the **`Run ▶`** button, executes the whole editor.
@@ -175,6 +179,11 @@ The SQL input is a multi-line editor.
   `qualifier.`.
 - Choosing a statement from `Hist` loads it back into the editor to edit or run
   again.
+
+Every single-line text field - the setup form's name, URL and per-field inputs,
+and the sidebar's object filter - edits the same way: the cursor moves with
+`← →`, jumps by word with `⌥` and to the ends with `⌘`/`Home`/`End`, all the
+deletes above work, and a click puts the cursor where you point.
 
 ### Terminal setup for `⌘` and `⌥` keys
 
@@ -217,6 +226,7 @@ return {
     { key = 'LeftArrow',  mods = 'OPT', action = act.SendString('\x1b[1;3D')}, -- ⌥←  → word left
     { key = 'RightArrow', mods = 'OPT', action = act.SendString('\x1b[1;3C')}, -- ⌥→  → word right
     { key = 'Backspace',  mods = 'OPT', action = act.SendString('\x1b\x7f') }, -- ⌥⌫  → delete word
+    { key = 'Backspace',  mods = 'CMD', action = act.SendString('\x15')     }, -- ⌘⌫  → delete to line start
   },
 }
 ```
