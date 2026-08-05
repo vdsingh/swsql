@@ -411,6 +411,11 @@ final class AppModel: ObservableObject {
             setStatus("a statement is already running - cancel it first", kind: .failure)
             return
         }
+        // The setup screen replaces the whole UI, so close the switcher on the
+        // way in: a lingering .connections pane keeps the global d/D remove
+        // shortcut (and a pending removal's y/n capture) live while the URL
+        // field is being typed into.
+        returnToData()
         clearDraft()
         connectionState = .unconfigured
         setStatus("add a PostgreSQL connection", kind: .info)
