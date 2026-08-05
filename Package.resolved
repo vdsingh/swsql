@@ -1,12 +1,12 @@
 {
-  "originHash" : "eb573830e2dc04da2054d0065208d628550eec67bd8a9f99fb32b08b31b5afe6",
+  "originHash" : "88dfdda06f19610ff2fbf06937bfcb7213c1ef35baa99ecb5c0651fa5c4479e2",
   "pins" : [
     {
       "identity" : "swifttui",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vdsingh/SwiftTUI.git",
       "state" : {
-        "revision" : "74ec866297bf4ece6ecf255c9807406630eff83e"
+        "revision" : "fd9f0c609e67dfba3a9b88f72886a0fc0441e5f5"
       }
     }
   ],

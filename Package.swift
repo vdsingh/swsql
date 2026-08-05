@@ -16,7 +16,7 @@ let package = Package(
         // exact commit so it cannot shift underfoot.
         .package(
             url: "https://github.com/vdsingh/SwiftTUI.git",
-            revision: "74ec866297bf4ece6ecf255c9807406630eff83e"
+            revision: "fd9f0c609e67dfba3a9b88f72886a0fc0441e5f5"
         )
     ],
     targets: [

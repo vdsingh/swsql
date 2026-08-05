@@ -31,12 +31,11 @@ struct RootView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TitleBarView(model: model, width: layout.width)
                 EditorPaneView(model: model, layout: layout)
+                // The completion menu floats over the body, so opening it
+                // neither moves the grid nor repaints anything but itself.
                 CompletionMenuView(model: model, width: layout.width)
-                // The completion menu takes rows from the body while it is open.
-                BodyView(model: model, layout: ScreenLayout(
-                    width: layout.width,
-                    height: layout.height - CompletionMenuView.height(for: model.completions.count)
-                ))
+                    .floating(column: 0, line: layout.completionMenuLine)
+                BodyView(model: model, layout: layout)
                 StatusBarView(model: model, width: layout.width)
                 KeyHintsView(model: model, width: layout.width)
             }

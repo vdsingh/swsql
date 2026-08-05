@@ -23,6 +23,9 @@ struct CompletionMenuView: View {
                 }
                 Text(border(left: "└", right: "┘", title: "")).foregroundColor(Theme.separator)
             }
+            // Floating over the grid, the menu must not let the cells behind
+            // it shine through.
+            .background(Color.default)
         }
     }
 

@@ -34,6 +34,12 @@ public struct ScreenLayout: Equatable {
         editorHeight + 4
     }
 
+    /// The line where the autocomplete dropdown opens: directly under the
+    /// editor's toolbar (title bar + editor lines + toolbar).
+    public var completionMenuLine: Int {
+        editorHeight + 2
+    }
+
     public var width: Int
     public var height: Int
 
