@@ -5,8 +5,8 @@ import SwiftTUI
 ///
 /// The editor is the first selectable control, so focus and typed input land
 /// here on launch. Return inserts a newline; Ctrl-R (or the Run button) executes
-/// the whole buffer. Arrow keys move the cursor and fall through to the toolbar
-/// once the cursor reaches the last line.
+/// the statement at the cursor. Arrow keys move the cursor and fall through to
+/// the toolbar once the cursor reaches the last line.
 struct EditorPaneView: View {
     @ObservedObject var model: AppModel
     let layout: ScreenLayout
@@ -16,6 +16,12 @@ struct EditorPaneView: View {
             TextEditor(
                 document: model.document,
                 placeholder: "type a SQL statement  —  ⌃R or Run ▶ to execute,  ⏎ for a new line",
+                commentPrefix: "-- ",
+                highlight: { text in
+                    SQLHighlighter.spans(in: text).map {
+                        TextEditorHighlight(range: $0.range, color: Theme.color(for: $0.kind))
+                    }
+                },
                 onRun: { model.runCurrentQuery() },
                 onChange: { model.editorLineChanged($0) },
                 menuKey: { model.handleMenuKey($0) }
@@ -33,7 +39,7 @@ struct EditorPaneView: View {
             Button("Run ▶", action: { model.runCurrentQuery() }).foregroundColor(Theme.success).bold()
             Button("Format", action: { model.formatQuery() }).foregroundColor(Theme.accent)
             Button("Clear", action: { model.clearEditor() }).foregroundColor(Theme.dim)
-            Text(DisplayText.pad("   ⌃R run  ·  ⌃F format  ·  ⏎ newline  ·  ↑↓←→ move", to: max(1, layout.width - 26), alignment: .left))
+            Text(DisplayText.pad("   ⌃R run  ·  ⌃F format  ·  ⌃/ comment  ·  ⏎ newline  ·  ↑↓←→ move", to: max(1, layout.width - 26), alignment: .left))
                 .foregroundColor(Theme.dim)
         }
     }

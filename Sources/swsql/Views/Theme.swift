@@ -35,6 +35,17 @@ enum Theme {
         case .null: return null
         }
     }
+
+    /// SQL syntax colors in the editor. Keywords get a color used nowhere else
+    /// on screen so they stand out from data and chrome alike.
+    static func color(for kind: SQLHighlighter.Kind) -> Color {
+        switch kind {
+        case .keyword: return .brightMagenta
+        case .string: return success
+        case .number: return numeric
+        case .comment: return dim
+        }
+    }
 }
 
 extension Extended {

@@ -166,8 +166,13 @@ The SQL input is a multi-line editor.
 | `⌘ ⌫` | delete to the start of the line (`^U` too) |
 | `fn ⌫` | forward-delete the character under the cursor |
 | `^R` | run the query (from anywhere) |
+| `^/` &nbsp;(or `⌘/`) | toggle a `--` line comment on the cursor's line |
 
-- **`^R`**, or the **`Run ▶`** button, executes the whole editor.
+- **`^R`**, or the **`Run ▶`** button, executes the statement under the cursor -
+  or the one just before it when the cursor sits between statements - so a
+  buffer holding several `;`-separated queries runs one at a time.
+- The editor colors SQL as you type: keywords, string literals, numbers and
+  comments each get their own color.
 - **`Format`** pretty-prints the query in place: keywords are upper-cased, each
   clause starts a new line, list items are indented, and subqueries are nested -
   while string literals and comments are left exactly as written.
@@ -219,6 +224,7 @@ return {
         end
       end) },
     { key = 'r',          mods = 'CMD', action = act.SendString('\x12')     }, -- ⌘R  → run
+    { key = '/',          mods = 'CMD', action = act.SendString('\x1f')     }, -- ⌘/  → toggle comment
     { key = 'LeftArrow',  mods = 'CMD', action = act.SendString('\x1b[H')   }, -- ⌘←  → line start
     { key = 'RightArrow', mods = 'CMD', action = act.SendString('\x1b[F')   }, -- ⌘→  → line end
     { key = 'UpArrow',    mods = 'CMD', action = act.SendString('\x1b[1;5H')}, -- ⌘↑  → query start

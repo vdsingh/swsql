@@ -606,9 +606,11 @@ final class AppModel: ObservableObject {
     /// new text in (formatting, recalling a statement) via `document.set`.
     let document = EditorDocument()
 
-    /// Runs whatever is in the editor. Bound to the editor's Ctrl-R and Run button.
+    /// Runs the statement the cursor is in - or the one just before it when the
+    /// cursor sits between statements. Bound to the editor's Ctrl-R and Run button.
     func runCurrentQuery() {
-        run(document.text)
+        guard let statement = SQLStatementSplitter.statement(in: document.text, atCursor: document.cursorOffset) else { return }
+        run(statement.text)
     }
 
     func clearEditor() {
